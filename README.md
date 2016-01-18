@@ -1,23 +1,19 @@
-ArduinoHondaOBD
+ArduinoHondaOBD_Extra (based on the original by kerpz)
 ===========
 
 An arduino code that reads Honda OBD Protocol and translates it to ELM327 protocol.
-I use Torque app to read and display the data on my android phone (via bluetooth),
-and a LCD (2x6) to display it on my car's dashboard.
-
-Please refer to the screenshots below.
-
+This fork will add three Dallas DS18B20 temperature sensors to the system created by kerpz.
+The sensors output will be available on the LCD as a second screen OR will be spliced into the OBD data sent to the OBD2 conversion routines. 
 
 Supports
 --------
 * Honda ECU's before 2002
+* This fork will be tested on a 1999 Honda S2000 used for track days.
 
 
 Files
 -----
 * hobd_uni - implements Honda OBD with ELM OBD2 protocol (bluetooth) and LCD display
-* hobd_elm - implements Honda OBD to ELM OBD2 protocol (bluetooth)
-* hobd_lcd - implements Honda OBD to LCD display
 * LCD_wiring.png - LCD wiring for arduino uno (10k potentiometer)
 
 
@@ -54,39 +50,8 @@ Wiring for hobd_elm (Deprecated use hobd_uni)
     Tx ---------------------- Pin10
 
 
-Wiring for hobd_lcd (Deprecated use hobd_uni)
----------------
-    Honda 3 Pin DLC           Arduino Uno
-    Gnd --------------------- Gnd
-    +12 --------------------- Vin
-    K-line ------------------ Pin12
-
-    LCD 2x16                  Arduino Uno               
-    RS ---------------------- Pin9
-    Enable ------------------ Pin8
-    D4 ---------------------- Pin7
-    D5 ---------------------- Pin6
-    D6 ---------------------- Pin5
-    D7 ---------------------- Pin4
-
-
-Screenshots (LCD 16x2)
----------------
-
-![Alt text](https://raw.github.com/kerpz/ArduinoHondaOBD/master/images/LCD_01.png "LCD Screenshot 01")
-![Alt text](https://raw.github.com/kerpz/ArduinoHondaOBD/master/images/LCD_02.png "LCD Screenshot 02")
-![Alt text](https://raw.github.com/kerpz/ArduinoHondaOBD/master/images/LCD_03.png "LCD Screenshot 03")
-
-Screenshots (Andorid App TORQUE)
----------------
-
-![Alt text](https://raw.github.com/kerpz/ArduinoHondaOBD/master/images/TORQUE_01.png "TORQUE Screenshot 01")
-![Alt text](https://raw.github.com/kerpz/ArduinoHondaOBD/master/images/TORQUE_02.png "TORQUE Screenshot 02")
-![Alt text](https://raw.github.com/kerpz/ArduinoHondaOBD/master/images/TORQUE_04.png "TORQUE Screenshot 04")
-![Alt text](https://raw.github.com/kerpz/ArduinoHondaOBD/master/images/TORQUE_03.png "TORQUE Screenshot 03")
-
 TODO
 -----
-* ECU detection (Obd1 or Obd2)
-* Fault codes reader
-* Integrate smart keyless entry via smart phone
+* Upload alpha version
+* 
+* 
