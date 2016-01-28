@@ -217,12 +217,12 @@ void procbtSerial(void) {
   // sscanf(data, "%02X%02X", mode, pid)
   // reset dtc/ecu honda
   // 21 04 01 DA / 01 03 FC
-  else if (!strcmp(btdata1, "04")) { // clear dtc / stored values
+  else if (!strcmp(btdata1, "04")) { // clear dtc / stored values SNEEZY NOTE - OBDII Mode 04 (clear DTC memory and MIL)
     dlcCommand(0x21, 0x04, 0x01, 0x00, dlcdata); // reset ecu
     sprintf_P(btdata2, PSTR("OK\r\n>"));
   }
-  else if (!strcmp(btdata1, "0100")) {
-    sprintf_P(btdata2, PSTR("41 00 BE 3E B0 11\r\n>"));
+  else if (!strcmp(btdata1, "0100")) {	//SNEEZY NOTE - Requests 4 byte indicating if any of the next 32 PIDs are available (used by the ECU).
+    sprintf_P(btdata2, PSTR("41 00 BE 3E B0 11\r\n>"));  //SNEEZY NOTE - Programmer to calculate
   }
   else if (!strcmp(btdata1, "0101")) { // dtc / AA BB CC DD / A7 = MIL on/off, A6-A0 = DTC_CNT
     if (dlcCommand(0x20, 0x05, 0x0B, 0x01, dlcdata)) {
@@ -358,13 +358,13 @@ void procbtSerial(void) {
     sprintf_P(btdata2, PSTR("41 1C 01\r\n>"));
   }
   else if (!strcmp(btdata1, "0120")) {
-    sprintf_P(btdata2, PSTR("41 20 00 00 00 01\r\n>"));
+    sprintf_P(btdata2, PSTR("41 20 00 00 00 01\r\n>"));	//SNEEZY NOTE - forth byte of "01h" just flags that the next set of 32 bit flags is used (with some bits valid)
   }
   //else if (!strcmp(btdata1, "012F")) { // fuel level (%)
   //  sprintf_P(btdata2, PSTR("41 2F FF\r\n>")); // max
   //}
   else if (!strcmp(btdata1, "0130")) {
-    sprintf_P(btdata2, PSTR("41 30 20 00 00 01\r\n>"));
+    sprintf_P(btdata2, PSTR("41 30 20 00 00 01\r\n>")); //SNEEZY NOTE - forth byte of "01h" just flags that the next set of 32 bit flags is used (with some bits valid), first byte has some valid flags.
   }
   else if (!strcmp(btdata1, "0133")) { // baro (kPa)
     if (dlcCommand(0x20, 0x05, 0x13, 0x01, dlcdata)) {
@@ -375,7 +375,7 @@ void procbtSerial(void) {
     }
   }
   else if (!strcmp(btdata1, "0140")) {
-    sprintf_P(btdata2, PSTR("41 40 48 00 00 00\r\n>"));
+    sprintf_P(btdata2, PSTR("41 40 48 00 00 10\r\n>")); //SNEEZY NOTE - first byte has some valid flags, also one in the last byte, no further supported PIDs.
   }
   else if (!strcmp(btdata1, "0142")) { // ecu voltage (V)
     if (dlcCommand(0x20, 0x05, 0x17, 0x01, dlcdata)) {
@@ -396,7 +396,18 @@ void procbtSerial(void) {
       sprintf_P(btdata2, PSTR("DATA ERROR\r\n>"));
     }
   }
-  else if (!strcmp(btdata1, "2008")) { // custom hobd mapping / flags
+else if (!strcmp(btdata1, "015C")) { // EOT - Engine Oil Temp	SNEEZY NOTE - Added for Engine Oil Temp sensor (my external One Wire DS18B20)
+ //   if (dlcCommand(0x20, 0x05, 0x28, 0x01, dlcdata)) {			//to do - delete DLC and use value from sensor1_thermometer, rounded to 0 decimal places, add 40 to sensor value, store in dlcdata[2].
+	printTemperature(Sensor1_Thermometer);
+	Oil_Temp = Temp_Var + 40;		//OBDII sensor conversion EOT = A - 40, so add 40 to balance it.
+//work out rounding and cast to byte dlcdata[2]...
+      sprintf_P(btdata2, PSTR("41 5C %02X\r\n>"), dlcdata[2]);	// 
+    }
+    else {
+      sprintf_P(btdata2, PSTR("DATA ERROR\r\n>"));
+    }
+  }  
+else if (!strcmp(btdata1, "2008")) { // custom hobd mapping / flags
     if (dlcCommand(0x20, 0x05, 0x08, 0x01, dlcdata)) {
       sprintf_P(btdata2, PSTR("60 08 %02X\r\n>"), dlcdata[2]);
     }
