@@ -361,6 +361,7 @@ void procbtSerial(void)
    { // map (kPa)
       if (dlcCommand(0x20, 0x05, 0x12, 0x01, dlcdata))
       {
+         dlcdata[2] = (dlcdata[2] * 69)/100;   //Sneezy Note - Convert what seems to be 10xPSI into kPa for OBDII compatibility (PSI to kPa = PSI x 6.9).
          sprintf_P(btdata2, PSTR("41 0B %02X\r\n>"), dlcdata[2]);
       }
       else
@@ -461,6 +462,7 @@ void procbtSerial(void)
    { // baro (kPa)
       if (dlcCommand(0x20, 0x05, 0x13, 0x01, dlcdata))
       {
+         dlcdata[2] = (dlcdata[2] * 69)/100;   //Sneezy Note - Convert what seems to be 10xPSI into kPa for OBDII compatibility (PSI to kPa = PSI x 6.9).
          sprintf_P(btdata2, PSTR("41 33 %02X\r\n>"), dlcdata[2]);
       }
       else
@@ -505,7 +507,7 @@ void procbtSerial(void)
       float Oil_Temp = getTemperature(Sensor1_Thermometer) + 40.5;		//OBDII sensor conversion EOT = A - 40, so add 40 to balance it, + 0.5 for rounding up.
       sprintf_P(btdata2, PSTR("41 5C %02X\r\n>"), (byte)Oil_Temp);	// OBDII converted EOT value is in Oil_Temp, typecasting Oil_Temp to an uint8_t / byte / unsigned char
    }
-   else if (!strcmp(btdata1, "2008"))
+   else if (!strcmp(btdata1, "2008"))           
    { // custom hobd mapping / flags
       if (dlcCommand(0x20, 0x05, 0x08, 0x01, dlcdata))
       {
@@ -572,6 +574,21 @@ void procbtSerial(void)
          sprintf_P(btdata2, PSTR("NO DATA\r\n>"));
       }
    }
+   
+   else if (!strcmp(btdata1, "2002"))  //Sneezy Note - Additional custom PID for second Dallas temperature sensor
+   { // custom hobd mapping 
+      float Gear_Temp = getTemperature(Sensor2_Thermometer);   //OBDII sensor conversion (no conversion)
+          //sprintf_P(btdata2, PSTR("41 5C %02X\r\n>"), (byte)Oil_Temp);  
+          sprintf_P(btdata2, PSTR("60 02 %02X\r\n>"), (byte)Gear_Temp);  // OBDII converted EOT value is in Oil_Temp, typecasting Oil_Temp to an uint8_t / byte / unsigned char
+              
+    }
+   else if (!strcmp(btdata1, "2003"))   //Sneezy Note - Additional custom PID for third Dallas temperature sensor
+   { // custom hobd mapping 
+      float Diff_Temp = getTemperature(Sensor3_Thermometer);   //OBDII sensor conversion (no conversion)
+          //sprintf_P(btdata2, PSTR("41 5C %02X\r\n>"), (byte)Oil_Temp);  
+          sprintf_P(btdata2, PSTR("60 03 %02X\r\n>"), (byte)Diff_Temp);  // OBDII converted EOT value is in Oil_Temp, typecasting Oil_Temp to an uint8_t / byte / unsigned char      
+   }
+   
    else
    {
       sprintf_P(btdata2, PSTR("NO DATA\r\n>"));
