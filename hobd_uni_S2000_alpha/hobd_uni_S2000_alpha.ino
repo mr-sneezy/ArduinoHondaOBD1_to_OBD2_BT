@@ -1,7 +1,11 @@
 /*
-Author:
+Forked and additions made by Sneezy
+Editing and suggestions by MiCookie
+Original Author:
 - Philip Bordado (kerpz@yahoo.com)
 Hardware:
+- Arduino Nano
+- 3x Dallas DS18B20 OneWire temp sensors
 - HC-05 Bluetooth module at pin 10 (Rx) pin 11 (Tx)
 - DLC(K-line) at pin 12
 - Voltage divider @ 12v Car to pin A0 (680k ohms and 220k ohms)
