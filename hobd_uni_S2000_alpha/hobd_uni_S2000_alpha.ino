@@ -505,7 +505,9 @@ void procbtSerial(void)
       //Oil_Temp = Temp_Var + 40.5;		//OBDII sensor conversion EOT = A - 40, so add 40 to balance it, + 0.5 for rounding up.
       // COOKIE
       float Oil_Temp = getTemperature(Sensor1_Thermometer) + 40.5;		//OBDII sensor conversion EOT = A - 40, so add 40 to balance it, + 0.5 for rounding up.
-      sprintf_P(btdata2, PSTR("41 5C %02X\r\n>"), (byte)Oil_Temp);	// OBDII converted EOT value is in Oil_Temp, typecasting Oil_Temp to an uint8_t / byte / unsigned char
+      byte _Oil_Temp = (byte)Oil_Temp;
+      
+      sprintf_P(btdata2, PSTR("41 5C %02X\r\n>"), _Oil_Temp);	// OBDII converted EOT value is in Oil_Temp, typecasting Oil_Temp to an uint8_t / byte / unsigned char
    }
    else if (!strcmp(btdata1, "20FF08"))      //  - Had to go to THREE BYTES because two byte custom PIDs are too short for Torque Pros Extended PID parsing, added an FF.   
    { // custom hobd mapping / flags
@@ -594,7 +596,7 @@ void procbtSerial(void)
       sprintf_P(btdata2, PSTR("NO DATA\r\n>"));
    }
 
-   if (btdata2) bt_write(btdata2); // send reply
+   if (btdata2 != NULL) bt_write(btdata2); // send reply
 }
 
 void procdlcSerial(void)
@@ -828,16 +830,22 @@ void setup()
 
    // Start up the Dallas sensor library
    sensors.begin();
-   // set the resolution to 10 bit (good enough?)
+   // set the resolution to 9 bit (good enough?)
    sensors.setResolution(Sensor1_Thermometer, 9);
    sensors.setResolution(Sensor2_Thermometer, 9);
    sensors.setResolution(Sensor3_Thermometer, 9);
+   
+   // Async type request for temps takes only 2mS, programmer then must take following conversion time into account (and do more useful stuff while waiting).
+   sensors.setWaitForConversion(false);  // Makes it async and saves delay time.
 
    //MS - Button stuff
    // initialize the LED pin as an output:
    pinMode(ledPin, OUTPUT);
    // initialize the pushbutton pin as an input:
    pinMode(buttonPin, INPUT);
+   
+   // Start the bluetooth listening
+   btSerial.listen(); 
 }
 
 // COOKIE : Recommended change
@@ -887,16 +895,10 @@ void printTemperature(DeviceAddress deviceAddress)
 void loop()
 {
    //SNEEZY HACKING -
-   // Async type request for temps takes only 2mS, programmer then must take following conversion time into account (and do more useful stuff while waiting).
-   sensors.setWaitForConversion(false);  // Makes it async and saves delay time.
    sensors.requestTemperatures();
-   sensors.setWaitForConversion(true);   //Not sure if I need to set back to true here again, it's done in the library example loop though.
-
    My_Buttons();   //My button check for screen change
    //END SNEEZY HACKING
-   
-   btSerial.listen();
-   delay(300);
+            
    if (btSerial.available())
    {
       elm_mode = true;
