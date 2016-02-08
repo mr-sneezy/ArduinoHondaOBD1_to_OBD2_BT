@@ -1,7 +1,11 @@
 /*
-Author:
+Forked and additions made by Sneezy
+Editing and suggestions by MiCookie
+Original Author:
 - Philip Bordado (kerpz@yahoo.com)
 Hardware:
+- Arduino Nano
+- 3x Dallas DS18B20 OneWire temp sensors
 - HC-05 Bluetooth module at pin 10 (Rx) pin 11 (Tx)
 - DLC(K-line) at pin 12
 - Voltage divider @ 12v Car to pin A0 (680k ohms and 220k ohms)
@@ -382,6 +386,7 @@ void procbtSerial(void)
    { // map (kPa)
       if (dlcCommand(0x20, 0x05, 0x12, 0x01, dlcdata))
       {
+         dlcdata[2] = (dlcdata[2] * 69)/100;   //Sneezy Note - Convert what seems to be 10xPSI into kPa for OBDII compatibility (PSI to kPa = PSI x 6.9).
          sprintf_P(btdata2, PSTR("41 0B %02X\r\n>"), dlcdata[2]);
       }
       else
@@ -482,6 +487,7 @@ void procbtSerial(void)
    { // baro (kPa)
       if (dlcCommand(0x20, 0x05, 0x13, 0x01, dlcdata))
       {
+         dlcdata[2] = (dlcdata[2] * 69)/100;   //Sneezy Note - Convert what seems to be 10xPSI into kPa for OBDII compatibility (PSI to kPa = PSI x 6.9).
          sprintf_P(btdata2, PSTR("41 33 %02X\r\n>"), dlcdata[2]);
       }
       else
@@ -527,11 +533,11 @@ void procbtSerial(void)
       
       sprintf_P(btdata2, PSTR("41 5C %02X\r\n>"), _Oil_Temp);	// OBDII converted EOT value is in Oil_Temp, typecasting Oil_Temp to an uint8_t / byte / unsigned char
    }
-   else if (!strcmp(btdata1, "2008"))
+   else if (!strcmp(btdata1, "20FF08"))      //  - Had to go to THREE BYTES because two byte custom PIDs are too short for Torque Pros Extended PID parsing, added an FF.   
    { // custom hobd mapping / flags
       if (dlcCommand(0x20, 0x05, 0x08, 0x01, dlcdata))
       {
-         sprintf_P(btdata2, PSTR("60 08 %02X\r\n>"), dlcdata[2]);
+         sprintf_P(btdata2, PSTR("60 FF 08 %02X\r\n>"), dlcdata[2]);
       }
       else
       {
@@ -594,6 +600,21 @@ void procbtSerial(void)
          sprintf_P(btdata2, PSTR("NO DATA\r\n>"));
       }
    }
+   
+   else if (!strcmp(btdata1, "20FF02"))  //Sneezy Note - Additional custom PID for second Dallas temperature sensor- Had to go to THREE BYTES because two byte custom PIDs are too short for Torque Pros Extended PID parsing, add an FF.
+   { // custom hobd mapping 
+      float Gear_Temp = getTemperature(Sensor2_Thermometer);   //OBDII sensor conversion (no conversion)
+          //sprintf_P(btdata2, PSTR("41 5C %02X\r\n>"), (byte)Oil_Temp);  
+          sprintf_P(btdata2, PSTR("60 FF 02 %02X\r\n>"), (byte)Gear_Temp);  // OBDII converted EOT value is in Oil_Temp, typecasting Oil_Temp to an uint8_t / byte / unsigned char
+              
+    }
+   else if (!strcmp(btdata1, "20FF03"))   //Sneezy Note - Additional custom PID for third Dallas temperature sensor - Had to go to THREE BYTES because two byte custom PIDs are too short for Torque Pros Extended PID parsing, add an FF.
+   { // custom hobd mapping               //ALL custom PID's need to be changed to THREE BYTE commands
+      float Diff_Temp = getTemperature(Sensor3_Thermometer);   //OBDII sensor conversion (no conversion)
+          //sprintf_P(btdata2, PSTR("41 5C %02X\r\n>"), (byte)Oil_Temp);  
+          sprintf_P(btdata2, PSTR("60 FF 03 %02X\r\n>"), (byte)Diff_Temp);  // OBDII converted EOT value is in Oil_Temp, typecasting Oil_Temp to an uint8_t / byte / unsigned char      
+   }
+   
    else
    {
       sprintf_P(btdata2, PSTR("NO DATA\r\n>"));
