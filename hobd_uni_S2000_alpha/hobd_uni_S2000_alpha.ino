@@ -18,14 +18,16 @@ http://www.lightner.net/obd2guru/IMAP_AFcalc.html
 http://www.installuniversity.com/install_university/installu_articles/volumetric_efficiency/ve_computation_9.012000.htm
 */
 
-#define _DEBUG 1 // COOKIE : 
-#include <Arduino.h> // COOKIE : Required for Atmel Studio / Visual Studio (stops it underlining Arduino inbuilt functions, macros etc. as errors)
+#define _DEBUG 1
+#define _BT 1
+
+#include <Arduino.h>
 #include <LiquidCrystal.h>
 #include <SoftwareSerialWithHalfDuplex.h>
 
 //SNEEZY HACKING - Additions for 3x Dallas 1-wire temp sensors on a bus(async mode).
-#include <OneWire.h> // COOKIE : https://github.com/PaulStoffregen/OneWire
-#include <DallasTemperature.h> // COOKIE : https://github.com/milesburton/Arduino-Temperature-Control-Library
+#include <OneWire.h> // https://github.com/PaulStoffregen/OneWire
+#include <DallasTemperature.h> // https://github.com/milesburton/Arduino-Temperature-Control-Library
 
 // Data wire is plugged into pin 2 on the Arduino
 #define ONE_WIRE_BUS 2
@@ -65,23 +67,18 @@ LiquidCrystal lcd(9, 8, 7, 6, 5, 4);
 
 //SNEEZY HACKING - Button stuff
 // set pin numbers:
-const int buttonPin = 3;      // the number of the pushbutton pin
-const int ledPin =  13;       // the number of the LED pin
+const uint8_t buttonPin = 3;      // the number of the pushbutton pin
+const uint8_t ledPin =  13;       // the number of the LED pin
 
-int Led_State = LOW;          // the current state of the output pin
-int Old_Button_State = LOW;   // the previous reading from the input pin
-//int Screen_Number = LOW;      // the LCD screen to show
-boolean Screen_Number = false;   // the LCD screen to show
-//int DS18B20_1 = 0;               //global variable for ext temp sensor.
+bool Led_State = LOW;          // the current state of the output pin
+bool Old_Button_State = LOW;   // the previous reading from the input pin
+//bool Screen_Number = LOW;      // the LCD screen to show
+bool Screen_Number = false;   // the LCD screen to show
+//uint8_t DS18B20_1 = 0;               //global variable for ext temp sensor.
+
+uint32_t t0 = 0;
 
 //Variables for temperature sensor readings and calculations.
-
-// COOKIE : Im converting these to local variables instead of global variables
-//float Temp_Var;
-//float Oil_Temp;
-//float Gear_Temp;
-//float Diff_Temp;
-//End SNEEZY HACKING
 
 SoftwareSerialWithHalfDuplex btSerial(10, 11); // RX, TX
 SoftwareSerialWithHalfDuplex dlcSerial(12, 12, false, false);
@@ -93,7 +90,7 @@ bool elm_space = false;
 bool elm_linefeed = false;
 bool elm_header = false;
 bool pin_13 = false;
-int  elm_protocol = 0; // auto
+uint8_t  elm_protocol = 0; // auto
 
 void bt_write(char *str)
 {
@@ -114,7 +111,6 @@ void dlcInit()
    dlcSerial.write(0xdb);
    dlcSerial.write(0xb3);
    dlcSerial.write(0xe9);
-   delay(300);
 }
 
 int dlcCommand(byte cmd, byte num, byte loc, byte len, byte data[])
@@ -158,11 +154,15 @@ void procbtSerial(void)
    char btdata2[20];  // bt data out buffer
    byte dlcdata[20];  // dlc data buffer
    
-   int i = 0;
-
-   memset(btdata1, 0, sizeof(btdata1));
-   while (i < 20)
+   enum state {RESET, OK, DATA, NO_DATA, DATA_ERROR};
+   state response = OK; // Default response
+      
+   uint8_t i = 0;
+      
+   memset(btdata1, 0, sizeof(btdata1)); // clear the command string
    
+   // get the command string
+   while (i < 20)
    {
       if (btSerial.available())
       {
@@ -179,52 +179,50 @@ void procbtSerial(void)
       }
    }
 
-   memset(btdata2, 0, sizeof(btdata2));
+   memset(btdata2, 0, sizeof(btdata2)); // clear the response string
 
    if (!strcmp(btdata1, "ATD"))
    {
-      sprintf_P(btdata2, PSTR("OK\r\n>"));
+      // response = OK; // Note: this is the default
    }
-   else if (!strcmp(btdata1, "ATI"))
-   { // print id / general
-      sprintf_P(btdata2, PSTR("Honda OBD v1.0\r\n>"));
+   //               print id / general | reset all / general
+   else if ( (!strcmp(btdata1, "ATI")) | (!strcmp(btdata1, "ATZ")) ) 
+   {
+      response = RESET; 
    }
-   else if (!strcmp(btdata1, "ATZ"))
-   { // reset all / general
-      sprintf_P(btdata2, PSTR("Honda OBD v1.0\r\n>"));
-   }
+   // echo on/off / general     
    else if (strstr(btdata1, "ATE"))
-   { // echo on/off / general
+   { 
       elm_echo = (btdata1[3] == '1' ? true : false);
-      sprintf_P(btdata2, PSTR("OK\r\n>"));
    }
+   // line feed on/off / general
    else if (strstr(btdata1, "ATL"))
-   { // linfeed on/off / general
+   {
       elm_linefeed = (btdata1[3] == '1' ? true : false);
-      sprintf_P(btdata2, PSTR("OK\r\n>"));
    }
+   // memory on/off / general
    else if (strstr(btdata1, "ATM"))
-   { // memory on/off / general
+   {  
       elm_memory = (btdata1[3] == '1' ? true : false);
-      sprintf_P(btdata2, PSTR("OK\r\n>"));
    }
+   // space on/off / obd
    else if (strstr(btdata1, "ATS"))
-   { // space on/off / obd
+   { 
       elm_space = (btdata1[3] == '1' ? true : false);
-      sprintf_P(btdata2, PSTR("OK\r\n>"));
    }
+   // headers on/off / obd
    else if (strstr(btdata1, "ATH"))
-   { // headers on/off / obd
+   {
       elm_header = (btdata1[3] == '1' ? true : false);
-      sprintf_P(btdata2, PSTR("OK\r\n>"));
    }
+   // set protocol to ? and save it / obd
    else if (!strcmp(btdata1, "ATSP"))
-   { // set protocol to ? and save it / obd
+   {
       //elm_protocol = atoi(data[4]);
-      sprintf_P(btdata2, PSTR("OK\r\n>"));
    }
+   // pin 13 test
    else if (strstr(btdata1, "AT13"))
-   { // pin 13 test
+   {
       if (btdata1[4] == 'T')
       {
          pin_13 = !pin_13;
@@ -242,51 +240,77 @@ void procbtSerial(void)
       {
          digitalWrite(13, HIGH);
       }
-      sprintf_P(btdata2, PSTR("OK\r\n>"));
    }
+   // read voltage in float / volts
    else if (!strcmp(btdata1, "ATRV"))
-   { // read voltage in float / volts
-      btSerial.print("12.0V\r\n>");
-      //sprintf_P(btdata2, PSTR("%dV\r\n>"), volt2);
+   {
+      // Read 1.1V reference against AVcc
+      // set the reference to Vcc and the measurement to the internal 1.1V reference
+      #if defined(__AVR_ATmega32U4__) || defined(__AVR_ATmega1280__) || defined(__AVR_ATmega2560__)
+      ADMUX = _BV(REFS0) | _BV(MUX4) | _BV(MUX3) | _BV(MUX2) | _BV(MUX1);
+      #elif defined (__AVR_ATtiny24__) || defined(__AVR_ATtiny44__) || defined(__AVR_ATtiny84__)
+      ADMUX = _BV(MUX5) | _BV(MUX0);
+      #elif defined (__AVR_ATtiny25__) || defined(__AVR_ATtiny45__) || defined(__AVR_ATtiny85__)
+      ADMUX = _BV(MUX3) | _BV(MUX2);
+      #else
+      ADMUX = _BV(REFS0) | _BV(MUX3) | _BV(MUX2) | _BV(MUX1);
+      #endif
+      
+      delay(2); // Wait for Vref to settle
+      ADCSRA |= _BV(ADSC); // Start conversion
+      while (bit_is_set(ADCSRA,ADSC)); // measuring
+      
+      uint8_t low  = ADCL; // must read ADCL first - it then locks ADCH
+      uint8_t high = ADCH; // unlocks both
+      
+      long vcc = (high<<8) | low;
+      
+      //result = 1125300L / result; // Calculate Vcc (in mV); 1125300 = 1.1*1023*1000
+      vcc = 1125.3 / vcc; // Calculate Vcc (in mV); 1125300 = 1.1*1023*1000
+      
+      // kerpz haxx
+      float R1 = 680000.0; // Resistance of R1
+      float R2 = 220000.0; // Resistance of R2
+      float volt2 = (((analogRead(14) * vcc) / 1024.0) / (R2/(R1+R2))) * 10.0; // conversion & voltage divider
+      
+      sprintf_P(btdata2, PSTR("%2d.0V\r\n>"), (uint8_t)volt2);
+      response = DATA;
    }
    // sprintf_P(cmd_str, PSTR("%02X%02X\r"), mode, pid);
    // sscanf(data, "%02X%02X", mode, pid)
    // reset dtc/ecu honda
    // 21 04 01 DA / 01 03 FC
+   // clear dtc / stored values SNEEZY NOTE - OBDII Mode 04 (clear DTC memory and MIL)
    else if (!strcmp(btdata1, "04"))
-   { // clear dtc / stored values SNEEZY NOTE - OBDII Mode 04 (clear DTC memory and MIL)
+   { 
       dlcCommand(0x21, 0x04, 0x01, 0x00, dlcdata); // reset ecu
-      sprintf_P(btdata2, PSTR("OK\r\n>"));
    }
+   else // Numeric (HEX) response returned
+   {
+      uint16_t HexResponse = CharArrayToDec(btdata1);
+      
+   //SNEEZY NOTE - Requests 4 byte indicating if any of the next 32 PIDs are available (used by the ECU).
    else if (!strcmp(btdata1, "0100"))
-   {	//SNEEZY NOTE - Requests 4 byte indicating if any of the next 32 PIDs are available (used by the ECU).
+   {	
       sprintf_P(btdata2, PSTR("41 00 BE 3E B0 11\r\n>"));  //SNEEZY NOTE - Programmer to calculate https://en.wikipedia.org/wiki/OBD-II_PIDs#Mode_1_PID_00
    }
+   // dtc / AA BB CC DD / A7 = MIL on/off, A6-A0 = DTC_CNT
    else if (!strcmp(btdata1, "0101"))
-   { // dtc / AA BB CC DD / A7 = MIL on/off, A6-A0 = DTC_CNT
+   {
       if (dlcCommand(0x20, 0x05, 0x0B, 0x01, dlcdata))
       {
          byte a = ((dlcdata[2] >> 5) & 1) << 7; // get bit 5 on dlcdata[2], set it to a7
          sprintf_P(btdata2, PSTR("41 01 %02X 00 00 00\r\n>"), a);
+         response = DATA;
       }
       else
       {
-         sprintf_P(btdata2, PSTR("DATA ERROR\r\n>"));
+         response = DATA_ERROR;
       }
    }
-   //else if (!strcmp(btdata1, "0102")) // freeze dtc / 00 61 ???
-   //{
-   //  if (dlcCommand(0x20, 0x05, 0x98, 0x02, dlcdata))
-   //{
-   //    sprintf_P(btdata2, PSTR("41 02 %02X %02X\r\n>"), dlcdata[2], dlcdata[3]);
-   //  }
-   //  else
-   //{
-   //    sprintf_P(btdata2, PSTR("DATA ERROR\r\n>"));
-   //  }
-   //}
+   // fuel system status / 01 00 ???
    else if (!strcmp(btdata1, "0103"))
-   { // fuel system status / 01 00 ???
+   {
       //if (dlcCommand(0x20, 0x05, 0x0F, 0x01, dlcdata))
       //{ // flags
       //  byte a = dlcdata[2] & 1; // get bit 0 on dlcdata[2]
@@ -296,10 +320,11 @@ void procbtSerial(void)
       if (dlcCommand(0x20, 0x05, 0x9a, 0x02, dlcdata))
       {
          sprintf_P(btdata2, PSTR("41 03 %02X %02X\r\n>"), dlcdata[2], dlcdata[3]);
+         response = DATA;
       }
       else
       {
-         sprintf_P(btdata2, PSTR("DATA ERROR\r\n>"));
+         response = DATA_ERROR;
       }
    }
    else if (!strcmp(btdata1, "0104"))
@@ -468,8 +493,9 @@ void procbtSerial(void)
    {
       sprintf_P(btdata2, PSTR("41 40 48 00 00 10\r\n>")); //SNEEZY NOTE - first byte has some valid flags, also one in the last byte, no further supported PIDs.
    }
+   // ecu voltage (V)
    else if (!strcmp(btdata1, "0142"))
-   { // ecu voltage (V)
+   { 
       if (dlcCommand(0x20, 0x05, 0x17, 0x01, dlcdata))
       {
          float f = dlcdata[2];
@@ -495,10 +521,8 @@ void procbtSerial(void)
    }
    else if (!strcmp(btdata1, "015C"))
    { // EOT - Engine Oil Temp	SNEEZY NOTE - Added for Engine Oil Temp sensor (my external One Wire DS18B20)
-      //printTemperature(Sensor1_Thermometer);
-      //Oil_Temp = Temp_Var + 40.5;		//OBDII sensor conversion EOT = A - 40, so add 40 to balance it, + 0.5 for rounding up.
-      // COOKIE
-      float Oil_Temp = getTemperature(Sensor1_Thermometer) + 40.5;		//OBDII sensor conversion EOT = A - 40, so add 40 to balance it, + 0.5 for rounding up.
+      //OBDII sensor conversion EOT = A - 40, so add 40 to balance it, + 0.5 for rounding up
+      float Oil_Temp = getTemperature(Sensor1_Thermometer) + 40.5;
       byte _Oil_Temp = (byte)Oil_Temp;
       
       sprintf_P(btdata2, PSTR("41 5C %02X\r\n>"), _Oil_Temp);	// OBDII converted EOT value is in Oil_Temp, typecasting Oil_Temp to an uint8_t / byte / unsigned char
@@ -575,6 +599,22 @@ void procbtSerial(void)
       sprintf_P(btdata2, PSTR("NO DATA\r\n>"));
    }
 
+   }
+   
+   switch(response)
+   {
+      case RESET:
+      sprintf_P(btdata2, PSTR("Honda OBD v1.0\r\n>")); break;
+      case OK:
+      sprintf_P(btdata2, PSTR("OK\r\n>")); break;
+      case NO_DATA:
+      sprintf_P(btdata2, PSTR("NO DATA\r\n>")); break;
+      case DATA_ERROR:
+      sprintf_P(btdata2, PSTR("DATA ERROR\r\n>")); break;
+      default: // Default case is DATA - btdata2 is already set
+      break; 
+   }
+
    if (btdata2 != NULL) bt_write(btdata2); // send reply
 }
 
@@ -617,10 +657,9 @@ void procdlcSerial(void)
    // IMAP = RPM * MAP / IAT / 2
    // MAF = (IMAP/60)*(VE/100)*(Eng Disp)*(MMA)/(R)
    // Where: VE = 80% (Volumetric Efficiency), R = 8.314 J/°K/mole, MMA = 28.97 g/mole (Molecular mass of air)
-   float maf = 0.0;
    imap = (rpm * maps) / (iat + 273);
    // ve = 75, ed = 1.5.95, afr = 14.7
-   maf = (imap / 120) * (80 / 100) * 1.595 * 28.9644 / 8.314472;
+   float maf = (imap / 120) * (80 / 100) * 1.595 * 28.9644 / 8.314472;
 
    
    // Read 1.1V reference against AVcc
@@ -650,7 +689,7 @@ void procdlcSerial(void)
    // kerpz haxx
    float R1 = 680000.0; // Resistance of R1
    float R2 = 220000.0; // Resistance of R2
-   unsigned int volt2 = (((analogRead(14) * vcc) / 1024.0) / (R2/(R1+R2))) * 10.0; // convertion & voltage divider
+   unsigned int volt2 = (((analogRead(14) * vcc) / 1024.0) / (R2/(R1+R2))) * 10.0; // conversion & voltage divider
    //temp = ((analogRead(pinTemp) * vcc) / 1024.0) * 100.0; // LM35 celcius
    
    if (Screen_Number == false)
@@ -734,9 +773,7 @@ void procdlcSerial(void)
    if (Screen_Number == true)
    {  //Use SNEEZY screen No2
 
-      //printTemperature(Sensor1_Thermometer);
-      //Oil_Temp = Temp_Var;
-      float Oil_Temp = getTemperature(Sensor1_Thermometer); // COOKIE
+      float Oil_Temp = getTemperature(Sensor1_Thermometer);
       
       // set the cursor to column 0, line 1
       // (note: line 1 is the second row, since counting begins with 0):
@@ -745,9 +782,7 @@ void procdlcSerial(void)
       lcd.print(Oil_Temp, 0);
       lcd.print((char)223); // COOKIE : This display has a messed up ascii table.. handy if you are Japanese though : http://www.electronic-engineering.ch/microchip/datasheets/lcd/charset.gif
 
-      //printTemperature(Sensor2_Thermometer);
-      //Diff_Temp = Temp_Var;
-      float Diff_Temp = getTemperature(Sensor2_Thermometer); // COOKIE
+      float Diff_Temp = getTemperature(Sensor2_Thermometer);
       
       // set the cursor to column 0, line 1
       // (note: line 1 is the second row, since counting begins with 0):
@@ -758,9 +793,7 @@ void procdlcSerial(void)
 
       lcd.print(" "); //clear remaining row LCD chars (to avoid use of lcd.clear() as it flickers the screen).
 
-      //printTemperature(Sensor3_Thermometer);
-      //Gear_Temp = Temp_Var;
-      float Gear_Temp = getTemperature(Sensor3_Thermometer); // COOKIE
+      float Gear_Temp = getTemperature(Sensor3_Thermometer);
       
       // set the cursor to column 0, line 1
       // (note: line 1 is the second row, since counting begins with 0):
@@ -782,11 +815,48 @@ void My_Buttons()
    {
       Led_State = (Led_State == LOW) ? HIGH : LOW;
       //  Screen_Number = (Screen_Number == LOW) ? HIGH : LOW;
-      Screen_Number = !Screen_Number;  //Toggle screen boolean
+      Screen_Number = !Screen_Number;  //Toggle screen bool
       digitalWrite(ledPin, Led_State);
-      delay(50);
+      //delay(50);
    }
    Old_Button_State = CURRENT_BUTTON_STATE;
+}
+
+float getTemperature(DeviceAddress deviceAddress)
+{
+   float tempC = sensors.getTempC(deviceAddress);
+   if (tempC == -127.00)
+   {
+      //Serial.print("Error getting temperature");
+      // set the cursor to column 0, line 1
+      // (note: line 1 is the second row, since counting begins with 0):
+      // This is a debug statement, so ive included in a #define guard
+      #ifdef _DEBUG
+      lcd.clear();
+      lcd.print("Error getting   ");
+      lcd.setCursor(0, 1);
+      lcd.print("temperature     ");
+      delay(2000);
+      lcd.clear();
+      #endif // _DEBUG
+   }
+   
+   return tempC;
+}
+// Convert 4 digit character array to its decimal value
+// i.e. CharArrayToDec("23A3") = 9123
+uint16_t CharArrayToDec(const char (&in)[4])
+{
+   return ( CharToDec(in[0])*4096 + /* 16*16*16 = 4096 */
+   CharToDec(in[1])*256 +           /* 16*16 = 256 */
+   CharToDec(in[2])*16 +
+   CharToDec(in[3]) );
+}
+// Convert a single hex character to its decimal value
+// i.e. CharToDec("A") = 10
+uint8_t CharToDec(const char &in)
+{
+   return (in > '9')?(10 + in - 'A'):(in - '0');
 }
 
 void setup()
@@ -797,16 +867,18 @@ void setup()
 
    delay(100);
    dlcInit();
+   delay(300);
 
    // set up the LCD's number of columns and rows:
    lcd.begin(16, 2);
 
    lcd.clear();
    lcd.setCursor(0, 0);
-   lcd.print("Honda OBD v1.0");
+   lcd.print(F("Honda OBD v1.0"));
    lcd.setCursor(0,1);
-   lcd.print("LCD 16x2 Mode");
-
+   lcd.print(F("LCD 16x2 Mode"));
+   delay(1000);
+   
    // Start up the Dallas sensor library
    sensors.begin();
    // set the resolution to 9 bit (good enough?)
@@ -824,73 +896,35 @@ void setup()
    pinMode(buttonPin, INPUT);
    
    // Start the bluetooth listening
-   btSerial.listen(); 
+   btSerial.listen();
+   
+   t0 = millis();
 }
 
-// COOKIE : Recommended change
-float getTemperature(DeviceAddress deviceAddress)
-{
-   float tempC = sensors.getTempC(deviceAddress);
-   if (tempC == -127.00)
-   {
-      //Serial.print("Error getting temperature");
-      // set the cursor to column 0, line 1
-      // (note: line 1 is the second row, since counting begins with 0):
-      // This is a debug statement, so ive included in a #define guard
-#ifdef _DEBUG
-      lcd.clear();
-      lcd.print("Error getting   ");
-      lcd.setCursor(0, 1);
-      lcd.print("temperature     ");
-      delay(2000);
-      lcd.clear();
-#endif // _DEBUG
-   }
-   
-   return tempC;
-}
-/*
-void printTemperature(DeviceAddress deviceAddress)
-{
-   float tempC = sensors.getTempC(deviceAddress);
-   if (tempC == -127.00)
-   {
-      //Serial.print("Error getting temperature");
-      // set the cursor to column 0, line 1
-      // (note: line 1 is the second row, since counting begins with 0):
-      lcd.clear();
-      lcd.print("Error getting   ");
-      lcd.setCursor(0, 1);
-      lcd.print("temperature     ");
-      delay(2000);
-      lcd.clear();
-   }
-   else
-   {
-      Temp_Var = tempC;
-   }
-}
-*/
 void loop()
 {
    //SNEEZY HACKING -
    sensors.requestTemperatures();
    My_Buttons();   //My button check for screen change
    //END SNEEZY HACKING
-            
-   if (btSerial.available())
+   
+   // Check for bluetooth serial every 300ms
+   if (millis() - t0 >= 300)
    {
-      elm_mode = true;
-      lcd.clear();
-      lcd.setCursor(0, 0);
-      lcd.print("Honda OBD v1.0");
-      lcd.setCursor(0,1);
-      lcd.print("Bluetooth Mode");
-      procbtSerial();
+      if (btSerial.available())
+      {
+         elm_mode = true;
+         lcd.clear();
+         lcd.setCursor(0, 0);
+         lcd.print(F("Honda OBD v1.0"));
+         lcd.setCursor(0,1);
+         lcd.print(F("Bluetooth Mode"));
+         procbtSerial();
+      }
+      t0 = millis();
    }
    if (!elm_mode)
    {
       procdlcSerial();
    }
 }
-
