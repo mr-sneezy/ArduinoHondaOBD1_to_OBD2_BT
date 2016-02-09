@@ -7,7 +7,7 @@ Hardware:
 - Arduino Nano
 - 3x Dallas DS18B20 OneWire temp sensors
 - HC-05 Bluetooth module at pin 10 (Rx) pin 11 (Tx)
-- DLC(K-line) at pin 12
+- LCD(K-line) at pin 12
 - Voltage divider @ 12v Car to pin A0 (680k ohms and 220k ohms)
 Software:
 - Arduino 1.0.5
@@ -22,10 +22,6 @@ http://www.lightner.net/obd2guru/IMAP_AFcalc.html
 http://www.installuniversity.com/install_university/installu_articles/volumetric_efficiency/ve_computation_9.012000.htm
 */
 
-#define _DEBUG 1
-#define _BT 1
-#define OBD2_BUFFER_LENGTH 20
-
 #include <Arduino.h>
 #include <LiquidCrystal.h>
 #include <SoftwareSerialWithHalfDuplex.h>
@@ -33,6 +29,20 @@ http://www.installuniversity.com/install_university/installu_articles/volumetric
 //SNEEZY HACKING - Additions for 3x Dallas 1-wire temp sensors on a bus(async mode).
 #include <OneWire.h> // https://github.com/PaulStoffregen/OneWire
 #include <DallasTemperature.h> // https://github.com/milesburton/Arduino-Temperature-Control-Library
+
+#define OBD2_BUFFER_LENGTH 20
+
+#define _DEBUG 1
+
+#if (_DEBUG == 1)
+#define DebugPrint(x) Serial.print(x)
+#define DebugPrintln(x) Serial.println(x)
+#define DebugPrintHex(x) Serial.print(x, HEX)
+#else
+#define DebugPrint(x)
+#define DebugPrintln(x)
+#define DebugPrintHex(x)
+#endif
 
 // Data wire is plugged into pin 2 on the Arduino
 #define ONE_WIRE_BUS 2
@@ -81,20 +91,20 @@ bool Old_Button_State = LOW;   // the previous reading from the input pin
 bool Screen_Number = false;   // the LCD screen to show
 //uint8_t DS18B20_1 = 0;               //global variable for ext temp sensor.
 
-uint32_t t0 = 0;
+uint32_t t0 = 0, tLastBluetooth = 0;
 enum state {DATA_ERROR, DATA, RESET, OK};
 
 //Variables for temperature sensor readings and calculations.
 
 SoftwareSerialWithHalfDuplex btSerial(10, 11); // RX, TX
-SoftwareSerialWithHalfDuplex dlcSerial(12, 12, false, false);
+SoftwareSerialWithHalfDuplex lcdSerial(12, 12, false, false);
 
 bool elm_mode = false;
-bool elm_memory = false;
-bool elm_echo = false;
-bool elm_space = false;
-bool elm_linefeed = false;
-bool elm_header = false;
+bool elm_memory = false; // TODO : Remove (this is set, but unused)
+bool elm_echo = false;  // TODO : Remove (this is set, but unused)
+bool elm_space = false; // TODO : Remove (this is set, but unused)
+bool elm_linefeed = false; // TODO : Remove (this is set, but unused)
+bool elm_header = false; // TODO : Remove (this is set, but unused)
 bool pin_13 = false;
 uint8_t  elm_protocol = 0; // auto
 
@@ -112,22 +122,22 @@ void bt_write(char *str)
    btSerial.write(*str++);
 }
 
-void dlcInit()
+void lcdInit()
 {
-   dlcSerial.write(0x68);
-   dlcSerial.write(0x6a);
-   dlcSerial.write(0xf5);
-   dlcSerial.write(0xaf);
-   dlcSerial.write(0xbf);
-   dlcSerial.write(0xb3);
-   dlcSerial.write(0xb2);
-   dlcSerial.write(0xc1);
-   dlcSerial.write(0xdb);
-   dlcSerial.write(0xb3);
-   dlcSerial.write(0xe9);
+   lcdSerial.write(0x68);
+   lcdSerial.write(0x6a);
+   lcdSerial.write(0xf5);
+   lcdSerial.write(0xaf);
+   lcdSerial.write(0xbf);
+   lcdSerial.write(0xb3);
+   lcdSerial.write(0xb2);
+   lcdSerial.write(0xc1);
+   lcdSerial.write(0xdb);
+   lcdSerial.write(0xb3);
+   lcdSerial.write(0xe9);
 }
 
-state dlcCommand(byte cmd, byte num, byte loc, byte len, byte (&data)[OBD2_BUFFER_LENGTH])
+state lcdCommand(byte cmd, byte num, byte loc, byte len, byte (&data)[OBD2_BUFFER_LENGTH])
 {
    byte crc = (0xFF - (cmd + num + loc + len - 0x01)); // checksum FF - (cmd + num + loc + len - 0x01)
 
@@ -135,20 +145,20 @@ state dlcCommand(byte cmd, byte num, byte loc, byte len, byte (&data)[OBD2_BUFFE
    // Not needed, all arrays passed to this function have been initialised as all zeros
    // memset(data, 0, sizeof(data) * OBD2_BUFFER_LENGTH);
 
-   dlcSerial.listen();
+   lcdSerial.listen();
 
-   dlcSerial.write(cmd);  // header/cmd read memory ??
-   dlcSerial.write(num);  // num of bytes to send
-   dlcSerial.write(loc);  // address
-   dlcSerial.write(len);  // num of bytes to read
-   dlcSerial.write(crc);  // checksum
+   lcdSerial.write(cmd);  // header/cmd read memory ??
+   lcdSerial.write(num);  // num of bytes to send
+   lcdSerial.write(loc);  // address
+   lcdSerial.write(len);  // num of bytes to read
+   lcdSerial.write(crc);  // checksum
    
    int i = 0;
    while (i < (len+3) && millis() < timeOut)
    {
-      if (dlcSerial.available())
+      if (lcdSerial.available())
       {
-         data[i] = dlcSerial.read();
+         data[i] = lcdSerial.read();
          i++;
       }
    }
@@ -168,7 +178,7 @@ void procbtSerial(void)
    // initialise all arrays as zeros
    char btdata1[OBD2_BUFFER_LENGTH] = {0};  // bt data in buffer
    char btdata2[OBD2_BUFFER_LENGTH] = {0};  // bt data out buffer
-   byte dlcdata[OBD2_BUFFER_LENGTH] = {0};  // dlc data buffer
+   byte lcddata[OBD2_BUFFER_LENGTH] = {0};  // lcd data buffer
 
    state response = OK; // Default response
    
@@ -194,7 +204,12 @@ void procbtSerial(void)
          }
       }
    }
-
+   
+   DebugPrint(F("BT Command :>"));
+   DebugPrint(btdata1);
+   DebugPrint(F("< Length = "));
+   DebugPrintln(command_length);
+   
    // clear the response string
    //memset(btdata2, 0, sizeof(btdata2) * OBD2_BUFFER_LENGTH);
    
@@ -302,15 +317,26 @@ void procbtSerial(void)
    // clear dtc / stored values SNEEZY NOTE - OBD2 Mode 04 (clear DTC memory and MIL)
    else if (!strcmp(btdata1, "04"))
    {
-      response = dlcCommand(0x21, 0x04, 0x01, 0x00, dlcdata); // reset ecu
+      response = lcdCommand(0x21, 0x04, 0x01, 0x00, lcddata); // reset ecu
    }
    // Numeric (HEX) command
    ///   01XX : OBD2 Mode 1 commands
    /// 02FFXX : OBD2 custom Extended PID commands
    else
    {
-      uint16_t OBD2_Command = CharArrayToDec(btdata1, command_length +1);
+      uint16_t OBD2_Command = CharArrayToDec(btdata1, command_length);
+      
+      DebugPrintln(F("##########"));
+      DebugPrint(F("OBD2 Command : "));
+      DebugPrint(btdata1);
+      DebugPrint(F(" => "));
+      DebugPrintHex( OBD2_Command);
+      DebugPrintln("");
+      DebugPrintln(F("##########"));
+      
       float Temperature = 0;
+      
+      response = DATA; // Change default response to DATA
       
       switch (OBD2_Command)
       {
@@ -323,56 +349,56 @@ void procbtSerial(void)
          // dtc / AA BB CC DD / A7 = MIL on/off, A6-A0 = DTC_CNT
          break;
          case 0x0101:
-         response = dlcCommand(0x20, 0x05, 0x0B, 0x01, dlcdata);
+         response = lcdCommand(0x20, 0x05, 0x0B, 0x01, lcddata);
          if (response == DATA)
          {
-            byte a = ((dlcdata[2] >> 5) & 1) << 7; // get bit 5 on dlcdata[2], set it to a7
+            byte a = ((lcddata[2] >> 5) & 1) << 7; // get bit 5 on lcddata[2], set it to a7
             sprintf_P(btdata2, PSTR("41 01 %02X 00 00 00\r\n>"), a);
          }
          break;
          case 0x0103: // fuel system status / 01 00 ???
-         //response = dlcCommand(0x20, 0x05, 0x0F, 0x01, dlcdata);
+         //response = lcdCommand(0x20, 0x05, 0x0F, 0x01, lcddata);
          //if (response == DATA)
          //{ // flags
-         //  byte a = dlcdata[2] & 1; // get bit 0 on dlcdata[2]
-         //  a = (dlcdata[2] == 1 ? 2 : 1); // convert to comply obd2
+         //  byte a = lcddata[2] & 1; // get bit 0 on lcddata[2]
+         //  a = (lcddata[2] == 1 ? 2 : 1); // convert to comply obd2
          //  sprintf_P(btdata2, PSTR("41 03 %02X 00\r\n>"), a);
          // }
-         response = dlcCommand(0x20, 0x05, 0x9a, 0x02, dlcdata);
+         response = lcdCommand(0x20, 0x05, 0x9a, 0x02, lcddata);
          if (response == DATA)
          {
-            sprintf_P(btdata2, PSTR("41 03 %02X %02X\r\n>"), dlcdata[2], dlcdata[3]);
+            sprintf_P(btdata2, PSTR("41 03 %02X %02X\r\n>"), lcddata[2], lcddata[3]);
          }
          break;
          case 0x0104: // engine load (%)
-         response = dlcCommand(0x20, 0x05, 0x9c, 0x01, dlcdata);
+         response = lcdCommand(0x20, 0x05, 0x9c, 0x01, lcddata);
          if (response == DATA)
          {
-            sprintf_P(btdata2, PSTR("41 04 %02X\r\n>"), dlcdata[2]);
+            sprintf_P(btdata2, PSTR("41 04 %02X\r\n>"), lcddata[2]);
          }
          break;
          case 0x0105: // ect (°C)
-         response = dlcCommand(0x20, 0x05, 0x10, 0x01, dlcdata);
+         response = lcdCommand(0x20, 0x05, 0x10, 0x01, lcddata);
          if (response == DATA)
          {
-            float f = dlcdata[2];
+            float f = lcddata[2];
             f = 155.04149 - f * 3.0414878 + pow(f, 2) * 0.03952185 - pow(f, 3) * 0.00029383913 + pow(f, 4) * 0.0000010792568 - pow(f, 5) * 0.0000000015618437;
-            dlcdata[2] = round(f) + 40; // A-40
-            sprintf_P(btdata2, PSTR("41 05 %02X\r\n>"), dlcdata[2]);
+            lcddata[2] = round(f) + 40; // A-40
+            sprintf_P(btdata2, PSTR("41 05 %02X\r\n>"), lcddata[2]);
          }
          break;
          case 0x0106: // short FT (%)
-         response = dlcCommand(0x20, 0x05, 0x20, 0x01, dlcdata);
+         response = lcdCommand(0x20, 0x05, 0x20, 0x01, lcddata);
          if (response == DATA)
          {
-            sprintf_P(btdata2, PSTR("41 06 %02X\r\n>"), dlcdata[2]);
+            sprintf_P(btdata2, PSTR("41 06 %02X\r\n>"), lcddata[2]);
          }
          break;
          case 0x0107: // long FT (%)
-         response = dlcCommand(0x20, 0x05, 0x22, 0x01, dlcdata);
+         response = lcdCommand(0x20, 0x05, 0x22, 0x01, lcddata);
          if (response == DATA)
          {
-            sprintf_P(btdata2, PSTR("41 07 %02X\r\n>"), dlcdata[2]);
+            sprintf_P(btdata2, PSTR("41 07 %02X\r\n>"), lcddata[2]);
          }
          break;
          // case 0x010A: // fuel pressure
@@ -380,60 +406,60 @@ void procbtSerial(void)
          //response = DATA;
          //break;
          case 0x010B: // map (kPa)
-         response = dlcCommand(0x20, 0x05, 0x12, 0x01, dlcdata);
+         response = lcdCommand(0x20, 0x05, 0x12, 0x01, lcddata);
          if (response == DATA)
          {
-            dlcdata[2] = (dlcdata[2] * 69)/100;   //Sneezy Note - Convert what seems to be 10xPSI into kPa for OBD2 compatibility (PSI to kPa = PSI x 6.9).
-            sprintf_P(btdata2, PSTR("41 0B %02X\r\n>"), dlcdata[2]);
+            lcddata[2] = (lcddata[2] * 69)/100;   //Sneezy Note - Convert what seems to be 10xPSI into kPa for OBD2 compatibility (PSI to kPa = PSI x 6.9).
+            sprintf_P(btdata2, PSTR("41 0B %02X\r\n>"), lcddata[2]);
 
          }
          break;
          case 0x010C: // rpm
-         response = dlcCommand(0x20, 0x05, 0x00, 0x02, dlcdata);
+         response = lcdCommand(0x20, 0x05, 0x00, 0x02, lcddata);
          if (response == DATA)
          {
-            sprintf_P(btdata2, PSTR("41 0C %02X %02X\r\n>"), dlcdata[2], dlcdata[3]);
+            sprintf_P(btdata2, PSTR("41 0C %02X %02X\r\n>"), lcddata[2], lcddata[3]);
          }
          break;
          case 0x010D: // vss (km/h)
-         response = dlcCommand(0x20, 0x05, 0x02, 0x01, dlcdata);
+         response = lcdCommand(0x20, 0x05, 0x02, 0x01, lcddata);
          if (response == DATA)
          {
-            sprintf_P(btdata2, PSTR("41 0D %02X\r\n>"), dlcdata[2]);
+            sprintf_P(btdata2, PSTR("41 0D %02X\r\n>"), lcddata[2]);
          }
          break;
          case 0x010E: // timing advance (°)
-         response = dlcCommand(0x20, 0x05, 0x26, 0x01, dlcdata);
+         response = lcdCommand(0x20, 0x05, 0x26, 0x01, lcddata);
          if (response == DATA)
          {
-            sprintf_P(btdata2, PSTR("41 0E %02X\r\n>"), dlcdata[2]);
+            sprintf_P(btdata2, PSTR("41 0E %02X\r\n>"), lcddata[2]);
          }
          break;
          case 0x010F: // iat (°C)
-         response = dlcCommand(0x20, 0x05, 0x11, 0x01, dlcdata);
+         response = lcdCommand(0x20, 0x05, 0x11, 0x01, lcddata);
          if (response == DATA)
          {
-            float f = dlcdata[2];
+            float f = lcddata[2];
             f = 155.04149 - f * 3.0414878 + pow(f, 2) * 0.03952185 - pow(f, 3) * 0.00029383913 + pow(f, 4) * 0.0000010792568 - pow(f, 5) * 0.0000000015618437;
-            dlcdata[2] = round(f) + 40; // A-40
-            sprintf_P(btdata2, PSTR("41 0F %02X\r\n>"), dlcdata[2]);
+            lcddata[2] = round(f) + 40; // A-40
+            sprintf_P(btdata2, PSTR("41 0F %02X\r\n>"), lcddata[2]);
          }
          break;
          case 0x0111: // tps (%)
-         response = dlcCommand(0x20, 0x05, 0x14, 0x01, dlcdata);
+         response = lcdCommand(0x20, 0x05, 0x14, 0x01, lcddata);
          if (response == DATA)
          {
-            sprintf_P(btdata2, PSTR("41 11 %02X\r\n>"), dlcdata[2]);
+            sprintf_P(btdata2, PSTR("41 11 %02X\r\n>"), lcddata[2]);
          }
          break;
          case 0x0113: // o2 sensor present ???
          sprintf_P(btdata2, PSTR("41 13 80\r\n>")); // 10000000 / assume bank 1 present
          break;
          case 0x0114: // o2 (V)
-         response = dlcCommand(0x20, 0x05, 0x15, 0x01, dlcdata);
+         response = lcdCommand(0x20, 0x05, 0x15, 0x01, lcddata);
          if (response == DATA)
          {
-            sprintf_P(btdata2, PSTR("41 14 %02X FF\r\n>"), dlcdata[2]);
+            sprintf_P(btdata2, PSTR("41 14 %02X FF\r\n>"), lcddata[2]);
          }
          break;
          case 0x011C: // obd2
@@ -451,11 +477,11 @@ void procbtSerial(void)
          sprintf_P(btdata2, PSTR("41 30 20 00 00 01\r\n>"));
          break;
          case 0x0133: // baro (kPa)
-         response = dlcCommand(0x20, 0x05, 0x13, 0x01, dlcdata);
+         response = lcdCommand(0x20, 0x05, 0x13, 0x01, lcddata);
          if (response == DATA)
          {
-            dlcdata[2] = (dlcdata[2] * 69)/100;   //Sneezy Note - Convert what seems to be 10xPSI into kPa for OBD2 compatibility (PSI to kPa = PSI x 6.9).
-            sprintf_P(btdata2, PSTR("41 33 %02X\r\n>"), dlcdata[2]);
+            lcddata[2] = (lcddata[2] * 69)/100;   //Sneezy Note - Convert what seems to be 10xPSI into kPa for OBD2 compatibility (PSI to kPa = PSI x 6.9).
+            sprintf_P(btdata2, PSTR("41 33 %02X\r\n>"), lcddata[2]);
          }
          break;
          case 0x0140:
@@ -463,20 +489,20 @@ void procbtSerial(void)
          sprintf_P(btdata2, PSTR("41 40 48 00 00 10\r\n>"));
          break;
          case 0x0142: // ecu voltage (V)
-         response = dlcCommand(0x20, 0x05, 0x17, 0x01, dlcdata);
+         response = lcdCommand(0x20, 0x05, 0x17, 0x01, lcddata);
          if (response == DATA)
          {
-            float f = dlcdata[2];
+            float f = lcddata[2];
             f = f / 10.45;
             unsigned int u = f * 1000; // ((A*256)+B)/1000
             sprintf_P(btdata2, PSTR("41 42 %02X %02X\r\n>"), highByte(u), lowByte(u));
          }
          break;
          case 0x0145: // iacv / relative throttle position
-         response = dlcCommand(0x20, 0x05, 0x28, 0x01, dlcdata);
+         response = lcdCommand(0x20, 0x05, 0x28, 0x01, lcddata);
          if (response == DATA)
          {
-            sprintf_P(btdata2, PSTR("41 45 %02X\r\n>"), dlcdata[2]);
+            sprintf_P(btdata2, PSTR("41 45 %02X\r\n>"), lcddata[2]);
          }
          break;
          // Added for Engine Oil Temp sensor (my external One Wire DS18B20)
@@ -505,53 +531,54 @@ void procbtSerial(void)
          response = DATA;
          break;
          case 0x2008: // custom hobd mapping / flags
-         response = dlcCommand(0x20, 0x05, 0x08, 0x01, dlcdata);
+         response = lcdCommand(0x20, 0x05, 0x08, 0x01, lcddata);
          if (response == DATA)
          {
-            sprintf_P(btdata2, PSTR("60 FF 08 %02X\r\n>"), dlcdata[2]);
+            sprintf_P(btdata2, PSTR("60 FF 08 %02X\r\n>"), lcddata[2]);
          }
          break;
          case 0x2009: // custom hobd mapping / flags
-         response = dlcCommand(0x20, 0x05, 0x09, 0x01, dlcdata);
+         response = lcdCommand(0x20, 0x05, 0x09, 0x01, lcddata);
          if (response == DATA)
          {
-            sprintf_P(btdata2, PSTR("60 FF 09 %02X\r\n>"), dlcdata[2]);
+            sprintf_P(btdata2, PSTR("60 FF 09 %02X\r\n>"), lcddata[2]);
          }
          break;
          case 0x200A:  // custom hobd mapping / flags
-         response = dlcCommand(0x20, 0x05, 0x0A, 0x01, dlcdata);
+         response = lcdCommand(0x20, 0x05, 0x0A, 0x01, lcddata);
          if (response == DATA)
          {
-            sprintf_P(btdata2, PSTR("60 FF 0A %02X\r\n>"), dlcdata[2]);
+            sprintf_P(btdata2, PSTR("60 FF 0A %02X\r\n>"), lcddata[2]);
          }
          break;
          case 0x200B: // custom hobd mapping / flags
          //sprintf_P(btdata2, PSTR("60 0C AA\r\n>")); // 10101010 / test data
-         response = dlcCommand(0x20, 0x05, 0x0B, 0x01, dlcdata);
+         response = lcdCommand(0x20, 0x05, 0x0B, 0x01, lcddata);
          if (response == DATA)
          {
-            sprintf_P(btdata2, PSTR("60 FF 0B %02X\r\n>"), dlcdata[2]);
+            sprintf_P(btdata2, PSTR("60 FF 0B %02X\r\n>"), lcddata[2]);
          }
          break;
          case 0x200C:  // custom hobd mapping / flags
-         response = dlcCommand(0x20, 0x05, 0x0C, 0x01, dlcdata);
+         response = lcdCommand(0x20, 0x05, 0x0C, 0x01, lcddata);
          if (response == DATA)
          {
-            sprintf_P(btdata2, PSTR("60 FF 0C %02X\r\n>"), dlcdata[2]);
+            sprintf_P(btdata2, PSTR("60 FF 0C %02X\r\n>"), lcddata[2]);
          }
          break;
          // custom hobd mapping / flags
          case 0x200F:
-         response = dlcCommand(0x20, 0x05, 0x0F, 0x01, dlcdata);
+         response = lcdCommand(0x20, 0x05, 0x0F, 0x01, lcddata);
          if (response == DATA)
          {
-            sprintf_P(btdata2, PSTR("60 FF 0F %02X\r\n>"), dlcdata[2]);
+            sprintf_P(btdata2, PSTR("60 FF 0F %02X\r\n>"), lcddata[2]);
          }
          break;
          default:
          response = DATA_ERROR;
       }
    }
+   
    switch(response)
    {
       case RESET:
@@ -563,7 +590,11 @@ void procbtSerial(void)
       default: // Default case is DATA - btdata2 is already set
       break;
    }
-
+   
+   DebugPrint(F("BT Response >"));
+   DebugPrint(btdata2);
+   DebugPrintln(F("<"));
+   
    if (btdata2 != NULL) bt_write(btdata2); // send reply
 }
 
@@ -587,7 +618,20 @@ void lcdPaddedPrint(const uint16_t &in, const uint16_t &len, const bool zero_pad
    }
 }
 
-void procdlcSerial(void)
+void lcdClearSection(const uint8_t &col, const uint8_t &row, const uint8_t &length, const bool &moveFirst = false)
+{
+   if (moveFirst)
+   {
+      lcd.setCursor(col,row);
+   }
+   for (uint8_t i=0;i<length;++i)
+   {
+      lcd.print(" ");
+   }
+   lcd.setCursor(col,row);
+}
+
+void proclcdSerial(void)
 {
    //char h_initobd2[12] = {0x68,0x6a,0xf5,0xaf,0xbf,0xb3,0xb2,0xc1,0xdb,0xb3,0xe9}; // 200ms - 300ms delay
    //byte h_cmd1[6] = {0x20,0x05,0x00,0x10,0xcb}; // row 1
@@ -598,14 +642,14 @@ void procdlcSerial(void)
    byte data[OBD2_BUFFER_LENGTH] = {0};  //Received data from ECU has two byte header, data begins at 3rd byte [2]
    unsigned int rpm=0,vss=0,ect=0,iat=0,maps=0,baro=0,tps=0,volt=0, imap=0;
 
-   if (dlcCommand(0x20,0x05,0x00,0x10,data))
+   if (lcdCommand(0x20,0x05,0x00,0x10,data))
    { // row 1
       //rpm = 1875000 / (data[2] * 256 + data[3] + 1); // OBD1
       rpm = (data[2] * 256 + data[3]) / 4; // OBD2
       vss = data[4];
    }
    
-   if(dlcCommand(0x20,0x05,0x10,0x10,data))
+   if(lcdCommand(0x20,0x05,0x10,0x10,data))
    { // row2
       float f;
       f = data[2];
@@ -664,98 +708,43 @@ void procdlcSerial(void)
    //Use Kerpz original screen - with space padding
    if (Screen_Number == false)
    {  // lcd display format
+      //           111111
+      // 0123456789012345
       // R0000 S000 V00.0
       // E00 I00 M000 T00
       unsigned short i = 0;
       
-      lcd.clear();
-      
       // Line 1
-      lcd.setCursor(0,0);
-
+      lcdClearSection(0,0,6,true);
       lcd.print("R");
       lcdPaddedPrint(rpm,4);
-      /*
-      i = rpm;
-      lcd.print(i/1000);
-      i %= 1000;
-      lcd.print(i/100);
-      i %= 100;
-      lcd.print(i/10);
-      i %= 10;
-      lcd.print(i);
-      */
-      lcd.print(" ");
       
+      lcdClearSection(6,0,5);
       lcd.print("S");
       lcdPaddedPrint(vss,3);
-      /*
-      i = vss;
-      lcd.print(i/100);
-      i %= 100;
-      lcd.print(i/10);
-      i %= 10;
-      lcd.print(i);
-      */
-      lcd.print(" ");
       
+      lcdClearSection(11,0,5);
       lcd.print("V");
       lcdPaddedPrint(volt2/10,2);
-      /*
-      i = volt2;
-      lcd.print(i/100);
-      i %= 100;
-      lcd.print(i/10);
-      i %= 10;
-      lcd.print(".");
-      lcd.print(i);
-      */
       lcd.print(".");
       lcd.print(volt2 % 10);
 
       // Line 2
-      lcd.setCursor(0,1);
-
+      lcdClearSection(0,1,4,true);
       lcd.print("E");
       lcdPaddedPrint(ect,2);
-      /*
-      i = ect;
-      lcd.print(i/10);
-      i %= 10;
-      lcd.print(i);
-      */
-      lcd.print(" ");
 
+      lcdClearSection(4,1,4);
       lcd.print("I");
       lcdPaddedPrint(iat,2);
-      /*
-      i = iat;
-      lcd.print(i/10);
-      i %= 10;
-      lcd.print(i);
-      */
-      lcd.print(" ");
 
+      lcdClearSection(8,1,5);
       lcd.print("M");
       lcdPaddedPrint(maps,3);
-      /*
-      i = maps;
-      lcd.print(i/100);
-      i %= 100;
-      lcd.print(i/10);
-      i %= 10;
-      lcd.print(i);
-      */
-      lcd.print(" ");
-
+      
+      lcdClearSection(13,1,3);
       lcd.print("T");
       lcdPaddedPrint(tps,2);
-      /*
-      i = tps;
-      lcd.print(i/10);
-      i %= 10;
-      lcd.print(i);
-      */
    }
 
 
@@ -821,7 +810,7 @@ float getTemperature(DeviceAddress deviceAddress)
       // set the cursor to column 0, line 1
       // (note: line 1 is the second row, since counting begins with 0):
       // This is a debug statement, so ive included in a #define guard
-      #ifdef _DEBUG
+      #if ( _DEBUG == 1 )
       lcd.clear();
       lcd.print(F("Error getting   "));
       lcd.setCursor(0, 1);
@@ -846,13 +835,17 @@ uint16_t CharArrayToDec(const char (&in)[OBD2_BUFFER_LENGTH], const uint8_t leng
       CharToDec(in[2])*16 +
       CharToDec(in[3]) );
    }
-   else // length = 6 : OBD2 custom Extended PID commands
+   else if (length == 6) // length = 6 : OBD2 custom Extended PID commands
    {
       // "20FF08" -> 0x2008
       return ( CharToDec(in[0])*4096 + /* 16*16*16 = 4096 */
       CharToDec(in[1])*256 +           /* 16*16 = 256 */
       CharToDec(in[4])*16 +
       CharToDec(in[5]) );
+   }
+   else
+   {
+      return 0x0000;
    }
 }
 // Convert a single hex character to its decimal value
@@ -864,12 +857,14 @@ uint8_t CharToDec(const char &in)
 
 void setup()
 {
-   //Serial.begin(9600);
+   #if ( _DEBUG == 1 )
+   Serial.begin(9600);
+   #endif
    btSerial.begin(9600);
-   dlcSerial.begin(9600);
+   lcdSerial.begin(9600);
 
    delay(100);
-   dlcInit();
+   lcdInit();
    delay(300);
 
    // set up the LCD's number of columns and rows:
@@ -902,6 +897,7 @@ void setup()
    btSerial.listen();
    
    t0 = millis();
+   DebugPrintln(F("Setup"));
 }
 
 void loop()
@@ -911,23 +907,61 @@ void loop()
    My_Buttons();   //My button check for screen change
    //END SNEEZY HACKING
    
-   // Check for bluetooth serial every 300ms
-   if (millis() - t0 >= 300)
+   // LCD mode with 300ms bluetooth sniff
+   if (!elm_mode)
    {
+      proclcdSerial();
+      DebugPrintln(F("LCD Mode"));
+      
+      btSerial.listen();
+      delay(300);
+      DebugPrint(F("BT Available? "));
       if (btSerial.available())
       {
+         DebugPrintln(F("Yes!"));
+         
          elm_mode = true;
          lcd.clear();
          lcd.setCursor(0, 0);
          lcd.print(F("Honda OBD v1.0"));
          lcd.setCursor(0,1);
          lcd.print(F("Bluetooth Mode"));
+         
+         DebugPrintln(F("BT Mode"));
+         
          procbtSerial();
+         
+         btSerial.listen();
+         t0 = millis();
+         tLastBluetooth = millis();
       }
+      else
+      {
+         DebugPrintln(F("No!"));
+      }
+   }
+   // Bluetooth mode
+   else if (millis() - t0 > 300)
+   {
+      DebugPrint(F("BT Available? "));
+      if (btSerial.available())
+      {
+         DebugPrintln(F("Yes!"));
+         procbtSerial();
+         tLastBluetooth = millis();
+      }
+      else
+      {
+         DebugPrintln(F("No!"));
+      }
+      btSerial.listen();
+      
       t0 = millis();
    }
-   if (!elm_mode)
+   // If no bluetooth in the last 5 seconds then switch back to LCD mode / Bluetooth search
+   else if (millis() - tLastBluetooth > 5000)
    {
-      procdlcSerial();
+      elm_mode = false;
+      DebugPrintln(F("No bluetooth in 5s\nEntering LCD mode / Bluetooth sniff"));
    }
 }
