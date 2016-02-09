@@ -22,10 +22,6 @@ http://www.lightner.net/obd2guru/IMAP_AFcalc.html
 http://www.installuniversity.com/install_university/installu_articles/volumetric_efficiency/ve_computation_9.012000.htm
 */
 
-#define _DEBUG 1
-#define _BT 1
-#define OBD2_BUFFER_LENGTH 20
-
 #include <Arduino.h>
 #include <LiquidCrystal.h>
 #include <SoftwareSerialWithHalfDuplex.h>
@@ -33,6 +29,20 @@ http://www.installuniversity.com/install_university/installu_articles/volumetric
 //SNEEZY HACKING - Additions for 3x Dallas 1-wire temp sensors on a bus(async mode).
 #include <OneWire.h> // https://github.com/PaulStoffregen/OneWire
 #include <DallasTemperature.h> // https://github.com/milesburton/Arduino-Temperature-Control-Library
+
+#define OBD2_BUFFER_LENGTH 20
+
+#define _DEBUG 1
+
+#if (_DEBUG == 1)
+#define DebugPrint(x) Serial.print(x)
+#define DebugPrintln(x) Serial.println(x)
+#define DebugPrintHex(x) Serial.print(x, HEX)
+#else
+#define DebugPrint(x)
+#define DebugPrintln(x)
+#define DebugPrintHex(x)
+#endif
 
 // Data wire is plugged into pin 2 on the Arduino
 #define ONE_WIRE_BUS 2
@@ -81,7 +91,7 @@ bool Old_Button_State = LOW;   // the previous reading from the input pin
 bool Screen_Number = false;   // the LCD screen to show
 //uint8_t DS18B20_1 = 0;               //global variable for ext temp sensor.
 
-uint32_t t0 = 0;
+uint32_t t0 = 0, tLastBluetooth = 0;
 enum state {DATA_ERROR, DATA, RESET, OK};
 
 //Variables for temperature sensor readings and calculations.
@@ -90,11 +100,11 @@ SoftwareSerialWithHalfDuplex btSerial(10, 11); // RX, TX
 SoftwareSerialWithHalfDuplex dlcSerial(12, 12, false, false);
 
 bool elm_mode = false;
-bool elm_memory = false;
-bool elm_echo = false;
-bool elm_space = false;
-bool elm_linefeed = false;
-bool elm_header = false;
+bool elm_memory = false; // TODO : Remove (this is set, but unused)
+bool elm_echo = false;  // TODO : Remove (this is set, but unused)
+bool elm_space = false; // TODO : Remove (this is set, but unused)
+bool elm_linefeed = false; // TODO : Remove (this is set, but unused)
+bool elm_header = false; // TODO : Remove (this is set, but unused)
 bool pin_13 = false;
 uint8_t  elm_protocol = 0; // auto
 
@@ -194,7 +204,12 @@ void procbtSerial(void)
          }
       }
    }
-
+   
+   DebugPrint(F("BT Command :>"));
+   DebugPrint(btdata1);
+   DebugPrint(F("< Length = "));
+   DebugPrintln(command_length);
+   
    // clear the response string
    //memset(btdata2, 0, sizeof(btdata2) * OBD2_BUFFER_LENGTH);
    
@@ -309,8 +324,19 @@ void procbtSerial(void)
    /// 02FFXX : OBD2 custom Extended PID commands
    else
    {
-      uint16_t OBD2_Command = CharArrayToDec(btdata1, command_length +1);
+      uint16_t OBD2_Command = CharArrayToDec(btdata1, command_length);
+      
+      DebugPrintln(F("##########"));
+      DebugPrint(F("OBD2 Command : "));
+      DebugPrint(btdata1);
+      DebugPrint(F(" => "));
+      DebugPrintHex( OBD2_Command);
+      DebugPrintln("");
+      DebugPrintln(F("##########"));
+      
       float Temperature = 0;
+      
+      response = DATA; // Change default response to DATA
       
       switch (OBD2_Command)
       {
@@ -552,6 +578,7 @@ void procbtSerial(void)
          response = DATA_ERROR;
       }
    }
+   
    switch(response)
    {
       case RESET:
@@ -563,7 +590,11 @@ void procbtSerial(void)
       default: // Default case is DATA - btdata2 is already set
       break;
    }
-
+   
+   DebugPrint(F("BT Response >"));
+   DebugPrint(btdata2);
+   DebugPrintln(F("<"));
+   
    if (btdata2 != NULL) bt_write(btdata2); // send reply
 }
 
@@ -585,6 +616,19 @@ void lcdPaddedPrint(const uint16_t &in, const uint16_t &len, const bool zero_pad
       i %= 10;
       lcd.print(i);
    }
+}
+
+void lcdClearSection(const uint8_t &col, const uint8_t &row, const uint8_t &length, const bool &moveFirst = false)
+{
+   if (moveFirst)
+   {
+      lcd.setCursor(col,row);
+   }
+   for (uint8_t i=0;i<length;++i)
+   {
+      lcd.print(" ");
+   }
+   lcd.setCursor(col,row);
 }
 
 void procdlcSerial(void)
@@ -664,98 +708,43 @@ void procdlcSerial(void)
    //Use Kerpz original screen - with space padding
    if (Screen_Number == false)
    {  // lcd display format
+      //           111111
+      // 0123456789012345
       // R0000 S000 V00.0
       // E00 I00 M000 T00
       unsigned short i = 0;
       
-      lcd.clear();
-      
       // Line 1
-      lcd.setCursor(0,0);
-
+      lcdClearSection(0,0,6,true);
       lcd.print("R");
       lcdPaddedPrint(rpm,4);
-      /*
-      i = rpm;
-      lcd.print(i/1000);
-      i %= 1000;
-      lcd.print(i/100);
-      i %= 100;
-      lcd.print(i/10);
-      i %= 10;
-      lcd.print(i);
-      */
-      lcd.print(" ");
       
+      lcdClearSection(6,0,5);
       lcd.print("S");
       lcdPaddedPrint(vss,3);
-      /*
-      i = vss;
-      lcd.print(i/100);
-      i %= 100;
-      lcd.print(i/10);
-      i %= 10;
-      lcd.print(i);
-      */
-      lcd.print(" ");
       
+      lcdClearSection(11,0,5);
       lcd.print("V");
       lcdPaddedPrint(volt2/10,2);
-      /*
-      i = volt2;
-      lcd.print(i/100);
-      i %= 100;
-      lcd.print(i/10);
-      i %= 10;
-      lcd.print(".");
-      lcd.print(i);
-      */
       lcd.print(".");
       lcd.print(volt2 % 10);
 
       // Line 2
-      lcd.setCursor(0,1);
-
+      lcdClearSection(0,1,4,true);
       lcd.print("E");
       lcdPaddedPrint(ect,2);
-      /*
-      i = ect;
-      lcd.print(i/10);
-      i %= 10;
-      lcd.print(i);
-      */
-      lcd.print(" ");
 
+      lcdClearSection(4,1,4);
       lcd.print("I");
       lcdPaddedPrint(iat,2);
-      /*
-      i = iat;
-      lcd.print(i/10);
-      i %= 10;
-      lcd.print(i);
-      */
-      lcd.print(" ");
 
+      lcdClearSection(8,1,5);
       lcd.print("M");
       lcdPaddedPrint(maps,3);
-      /*
-      i = maps;
-      lcd.print(i/100);
-      i %= 100;
-      lcd.print(i/10);
-      i %= 10;
-      lcd.print(i);
-      */
-      lcd.print(" ");
-
+      
+      lcdClearSection(13,1,3);
       lcd.print("T");
       lcdPaddedPrint(tps,2);
-      /*
-      i = tps;
-      lcd.print(i/10);
-      i %= 10;
-      lcd.print(i);
-      */
    }
 
 
@@ -821,7 +810,7 @@ float getTemperature(DeviceAddress deviceAddress)
       // set the cursor to column 0, line 1
       // (note: line 1 is the second row, since counting begins with 0):
       // This is a debug statement, so ive included in a #define guard
-      #ifdef _DEBUG
+      #if ( _DEBUG == 1 )
       lcd.clear();
       lcd.print(F("Error getting   "));
       lcd.setCursor(0, 1);
@@ -846,13 +835,17 @@ uint16_t CharArrayToDec(const char (&in)[OBD2_BUFFER_LENGTH], const uint8_t leng
       CharToDec(in[2])*16 +
       CharToDec(in[3]) );
    }
-   else // length = 6 : OBD2 custom Extended PID commands
+   else if (length == 6) // length = 6 : OBD2 custom Extended PID commands
    {
       // "20FF08" -> 0x2008
       return ( CharToDec(in[0])*4096 + /* 16*16*16 = 4096 */
       CharToDec(in[1])*256 +           /* 16*16 = 256 */
       CharToDec(in[4])*16 +
       CharToDec(in[5]) );
+   }
+   else
+   {
+      return 0x0000;
    }
 }
 // Convert a single hex character to its decimal value
@@ -864,7 +857,9 @@ uint8_t CharToDec(const char &in)
 
 void setup()
 {
-   //Serial.begin(9600);
+   #if ( _DEBUG == 1 )
+   Serial.begin(9600);
+   #endif
    btSerial.begin(9600);
    dlcSerial.begin(9600);
 
@@ -902,6 +897,7 @@ void setup()
    btSerial.listen();
    
    t0 = millis();
+   DebugPrintln(F("Setup"));
 }
 
 void loop()
@@ -911,23 +907,61 @@ void loop()
    My_Buttons();   //My button check for screen change
    //END SNEEZY HACKING
    
-   // Check for bluetooth serial every 300ms
-   if (millis() - t0 >= 300)
+   // LCD mode with 300ms bluetooth sniff
+   if (!elm_mode)
    {
+      procdlcSerial();
+      DebugPrintln(F("LCD Mode"));
+      
+      btSerial.listen();
+      delay(300);
+      DebugPrint(F("BT Available? "));
       if (btSerial.available())
       {
+         DebugPrintln(F("Yes!"));
+         
          elm_mode = true;
          lcd.clear();
          lcd.setCursor(0, 0);
          lcd.print(F("Honda OBD v1.0"));
          lcd.setCursor(0,1);
          lcd.print(F("Bluetooth Mode"));
+         
+         DebugPrintln(F("BT Mode"));
+         
          procbtSerial();
+         
+         btSerial.listen();
+         t0 = millis();
+         tLastBluetooth = millis();
       }
+      else
+      {
+         DebugPrintln(F("No!"));
+      }
+   }
+   // Bluetooth mode
+   else if (millis() - t0 > 300)
+   {
+      DebugPrint(F("BT Available? "));
+      if (btSerial.available())
+      {
+         DebugPrintln(F("Yes!"));
+         procbtSerial();
+         tLastBluetooth = millis();
+      }
+      else
+      {
+         DebugPrintln(F("No!"));
+      }
+      btSerial.listen();
+      
       t0 = millis();
    }
-   if (!elm_mode)
+   // If no bluetooth in the last 5 seconds then switch back to LCD mode / Bluetooth search
+   else if (millis() - tLastBluetooth > 5000)
    {
-      procdlcSerial();
+      elm_mode = false;
+      DebugPrintln(F("No bluetooth in 5s\nEntering LCD mode / Bluetooth sniff"));
    }
 }
