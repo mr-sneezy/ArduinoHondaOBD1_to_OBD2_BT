@@ -1,6 +1,6 @@
 /*
-Forked and additions made by Sneezy
-Editing and suggestions by MiCookie
+Forked and additions made by @mr-sneezy
+Editing and suggestions by @micooke
 Original Author:
 - Philip Bordado (kerpz@yahoo.com)
 Hardware:
@@ -33,6 +33,9 @@ http://www.installuniversity.com/install_university/installu_articles/volumetric
 
 #define OBD2_BUFFER_LENGTH 20
 
+// 0 - no serial output
+// 1 - serial output
+// 2 - serial output with bluetooth command -> ecu command test
 #define _DEBUG 1
 
 // Data wire is plugged into pin 2 on the Arduino
@@ -88,10 +91,15 @@ enum state {DATA_ERROR, DATA, NO_DATA, RESET, OK};
 //Variables for temperature sensor readings and calculations.
 
 SoftwareSerialWithHalfDuplex btSerial(10,11); // RX, TX
+#if (_DEBUG == 2)
+SoftwareSerialWithHalfDuplex ecuSerial(13, 13, false, false);
+#else
 SoftwareSerialWithHalfDuplex ecuSerial(12, 12, false, false);
+#endif
+
 #define debugSerial Serial
 
-#if (_DEBUG == 1)
+#if (_DEBUG > 0)
 #define DebugPrint(x) debugSerial.print(x)
 #define DebugPrintln(x) debugSerial.println(x)
 #define DebugPrintHex(x) debugSerial.print(x, HEX)
@@ -112,13 +120,20 @@ byte hobd_protocol = 2; // 0 = obd0, 1 = obd1, 2 = obd2
 bool pin_13 = false;
 uint8_t  elm_protocol = 0; // auto
 
-// function declaration
+// function declarations
+///////
+
 // Convert 4 digit character array to its decimal value
 // i.e. CharArrayToDec("23A3") = 9123
-uint16_t CharArrayToDec(const char (&in)[OBD2_BUFFER_LENGTH], const uint8_t length = 4);
+uint16_t CharArrayToDec(const char * in, const uint8_t length = 4);
+
 // Convert a single hex character to its decimal value
 // i.e. CharToDec("A") = 10
 uint8_t CharToDec(const char &in);
+
+// process bt command for the ecu
+// processBluetoothCommand("0100", 4); // OBD2 Mode 1 command
+void processBluetoothCommand(const char * btdata1, const uint8_t &command_length);
 
 // Read 1.1V reference against AVcc
 uint8_t readVoltage(void)
@@ -215,13 +230,8 @@ void procbtSerial(void)
 {
    // initialise all arrays as zeros
    char btdata1[OBD2_BUFFER_LENGTH] = {0};  // bt data in buffer
-   char btdata2[OBD2_BUFFER_LENGTH] = {0};  // bt data out buffer
-   byte ecudata[OBD2_BUFFER_LENGTH] = {0};  // ecu data buffer
    
    uint8_t command_length = 0;
-   
-   // clear the command string
-   //memset(btdata1, 0, sizeof(btdata1) * OBD2_BUFFER_LENGTH);
    
    // get the command string
    while (command_length < 20)
@@ -246,8 +256,13 @@ void procbtSerial(void)
    DebugPrint(F("< Length = "));
    DebugPrintln(command_length);
    
-   // clear the response string
-   //memset(btdata2, 0, sizeof(btdata2) * OBD2_BUFFER_LENGTH);
+   processBluetoothCommand(btdata1, command_length);
+}
+
+void processBluetoothCommand(const char * btdata1, const uint8_t &command_length)
+{
+   char btdata2[OBD2_BUFFER_LENGTH] = {0};  // bt data out buffer
+   byte ecudata[OBD2_BUFFER_LENGTH] = {0};  // ecu data buffer
    
    state response = NO_DATA; // Default response = NO DATA
    
@@ -295,7 +310,7 @@ void procbtSerial(void)
       response = OK;
    }
    // set protocol to ? and save it / obd
-   else if (command_length == 4 && strstr(btdata1, "ATSP"))
+   else if (command_length == 5 && strstr(btdata1, "ATSP"))
    {
       //elm_protocol = atoi(data[4]);
       response = OK;
@@ -328,7 +343,7 @@ void procbtSerial(void)
       response = DATA;
    }
    // pin 13 test
-   else if (command_length == 4 && strstr(btdata1, "AT13"))
+   else if (command_length == 5 && strstr(btdata1, "AT13"))
    {
       if (btdata1[4] == 'T')
       {
@@ -874,7 +889,7 @@ float getTemperature(DeviceAddress deviceAddress)
 
 // Convert 4 digit character array to its decimal value
 // i.e. CharArrayToDec("23A3") = 9123
-uint16_t CharArrayToDec(const char (&in)[OBD2_BUFFER_LENGTH], const uint8_t length)
+uint16_t CharArrayToDec(const char * in, const uint8_t length)
 {
    if (length == 4) // length = 4 : OBD2 Mode 1 commands
    {
@@ -906,7 +921,7 @@ uint8_t CharToDec(const char &in)
 
 void setup()
 {
-   #if ( _DEBUG == 1 )
+   #if ( _DEBUG > 0 )
    debugSerial.begin(9600);
    DebugPrintln(F("Setup"));
    DebugPrintln(F("LCD Mode"));
@@ -927,7 +942,7 @@ void setup()
    lcd.print(F("Honda OBD v1.0"));
    lcd.setCursor(0,1);
    lcd.print(F("LCD 16x2 Mode"));
-           
+   
    // Start up the Dallas sensor library
    sensors.begin();
    // set the resolution to 9 bit (good enough?)
@@ -949,9 +964,62 @@ void setup()
 
    // Setup the bluetooth and start it listening
    btSerial.begin(9600);
-   btSerial.listen();
    
    t0 = millis();
+
+   // Force debug of bluetooth processing
+   #if (_DEBUG == 2)
+   processBluetoothCommand("ATD", 3);
+   processBluetoothCommand("ATI", 3);
+   processBluetoothCommand("ATZ", 3);
+   processBluetoothCommand("ATE", 4);
+   processBluetoothCommand("ATL", 4);
+   processBluetoothCommand("ATM", 4);
+   processBluetoothCommand("ATS", 4);
+   processBluetoothCommand("ATH", 4);
+   processBluetoothCommand("ATSP", 5);
+   processBluetoothCommand("ATDP", 4);
+   processBluetoothCommand("ATRV", 4);
+   processBluetoothCommand("ATSHP", 6);
+   processBluetoothCommand("ATDHP", 5);
+   processBluetoothCommand("AT13", 5);
+   processBluetoothCommand("AT17", 4);
+   processBluetoothCommand("AT18", 4);
+   processBluetoothCommand("04", 2);
+   processBluetoothCommand("0100", 4);
+   processBluetoothCommand("0101", 4);
+   processBluetoothCommand("0102", 4);
+   processBluetoothCommand("0103", 4);
+   processBluetoothCommand("0104", 4);
+   processBluetoothCommand("0105", 4);
+   processBluetoothCommand("0106", 4);
+   processBluetoothCommand("0107", 4);
+   processBluetoothCommand("010A", 4);
+   processBluetoothCommand("010B", 4);
+   processBluetoothCommand("010C", 4);
+   processBluetoothCommand("010D", 4);
+   processBluetoothCommand("010E", 4);
+   processBluetoothCommand("010F", 4);
+   processBluetoothCommand("0111", 4);
+   processBluetoothCommand("0113", 4);
+   processBluetoothCommand("0114", 4);
+   processBluetoothCommand("011C", 4);
+   processBluetoothCommand("0120", 4);
+   processBluetoothCommand("012F", 4);
+   processBluetoothCommand("0130", 4);
+   processBluetoothCommand("0133", 4);
+   processBluetoothCommand("0140", 4);
+   processBluetoothCommand("0142", 4);
+   processBluetoothCommand("0145", 4);
+   processBluetoothCommand("20FF08", 6);
+   processBluetoothCommand("20FF09", 6);
+   processBluetoothCommand("20FF0A", 6);
+   processBluetoothCommand("20FF0B", 6);
+   processBluetoothCommand("20FF0C", 6);
+   processBluetoothCommand("20FF0D", 6);
+   processBluetoothCommand("20FF0E", 6);
+   processBluetoothCommand("20FF0F", 6);
+   #endif
 
    delay(1000); // Show the LCD setup message for 1s
 }
