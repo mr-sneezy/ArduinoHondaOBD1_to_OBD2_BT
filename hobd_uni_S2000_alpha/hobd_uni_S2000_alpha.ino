@@ -502,7 +502,7 @@ void procbtSerial(void)
             sprintf_P(btdata2, PSTR("41 0F %02X\r\n>"), ecudata[2]);
          }
          break;
-         case 0x0111: // tps (%)
+         case 0x0111: // tps (%)   Absolute TPS - i.e the raw TPS potentiometer position - never reaches either endstop at idle or WOT at the TB.
          response = ecuCommand(0x20, 0x05, 0x14, 0x01, ecudata);
          if (response == DATA)
          {
@@ -555,11 +555,14 @@ void procbtSerial(void)
             sprintf_P(btdata2, PSTR("41 42 %02X %02X\r\n>"), highByte(u), lowByte(u));
          }
          break;
-         case 0x0145: // iacv / relative throttle position
+         case 0x0145: // iacv / relative throttle position - Position equated to 0-100% of pedal input i.e. Pedal idle = 0% Pedal full down  = 100% 
          response = ecuCommand(0x20, 0x05, 0x28, 0x01, ecudata);
          if (response == DATA)
          {
-            sprintf_P(btdata2, PSTR("41 45 %02X\r\n>"), ecudata[2]);
+            int i = (dlcdata[2] - 24) / 2;  //Kerpz conversion seems to work for my car too nicely, I get 0% or 100% at the endstops.
+			if (i < 0) i = 0; // haxx
+			sprintf_P(btdata2, PSTR("41 45 %02X\r\n>"), i);
+			//sprintf_P(btdata2, PSTR("41 45 %02X\r\n>"), ecudata[2]);
          }
          break;
          // Added for Engine Oil Temp sensor (my external One Wire DS18B20)
