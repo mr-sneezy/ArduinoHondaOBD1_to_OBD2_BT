@@ -36,7 +36,7 @@ http://www.installuniversity.com/install_university/installu_articles/volumetric
 // 0 - no serial output
 // 1 - serial output
 // 2 - serial output with bluetooth command -> ecu command test
-#define _DEBUG 1
+#define _DEBUG 2
 
 // Data wire is plugged into pin 2 on the Arduino
 #define ONE_WIRE_BUS 2
@@ -429,21 +429,21 @@ void processBluetoothCommand(const char * btdata1, const uint8_t &command_length
          response = NO_DATA;
          break;
          case 0x0103: // fuel system status / 01 00 ???
-         //response = ecuCommand(0x20, 0x05, 0x0F, 0x01, ecudata);
+         //response = ecuCommand(0x20, 0x05, 0x0F, 0x01, ecudata); 
          //if (response == DATA)
          //{ // flags
          //  byte a = ecudata[2] & 1; // get bit 0 on ecudata[2]
          //  a = (ecudata[2] == 1 ? 2 : 1); // convert to comply obd2
          //  sprintf_P(btdata2, PSTR("41 03 %02X 00\r\n>"), a);
          // }
-         response = ecuCommand(0x20, 0x05, 0x9a, 0x02, ecudata);
+         response = ecuCommand(0x20, 0x05, 0x9a, 0x02, ecudata);  //Sneezy - No reference info for HOBD 0x9A found ???
          if (response == DATA)
          {
             sprintf_P(btdata2, PSTR("41 03 %02X %02X\r\n>"), ecudata[2], ecudata[3]);
          }
          break;
          case 0x0104: // engine load (%)
-         response = ecuCommand(0x20, 0x05, 0x9c, 0x01, ecudata);
+         response = ecuCommand(0x20, 0x05, 0x9c, 0x01, ecudata); //Sneezy - No reference info for HOBD 0x9C found ???
          if (response == DATA)
          {
             sprintf_P(btdata2, PSTR("41 04 %02X\r\n>"), ecudata[2]);
@@ -481,7 +481,7 @@ void processBluetoothCommand(const char * btdata1, const uint8_t &command_length
          response = ecuCommand(0x20, 0x05, 0x12, 0x01, ecudata);
          if (response == DATA)
          {
-            ecudata[2] = (ecudata[2] * 69)/100;   //Sneezy Note - Convert what seems to be 10xPSI into kPa for OBD2 compatibility (PSI to kPa = PSI x 6.9).
+            ecudata[2] = (ecudata[2] * 69)/100;   //Sneezy Note - Convert what might be a 1.75Bar sensor into kPa for OBD2 compatibility (1750/255=6.9).
             sprintf_P(btdata2, PSTR("41 0B %02X\r\n>"), ecudata[2]);
 
          }
@@ -552,7 +552,7 @@ void processBluetoothCommand(const char * btdata1, const uint8_t &command_length
          response = ecuCommand(0x20, 0x05, 0x13, 0x01, ecudata);
          if (response == DATA)
          {
-            ecudata[2] = (ecudata[2] * 69)/100;   //Sneezy Note - Convert what seems to be 10xPSI into kPa for OBD2 compatibility (PSI to kPa = PSI x 6.9).
+            ecudata[2] = (ecudata[2] * 69)/100;   //Sneezy Note - Convert what might be a 1.75Bar sensor into kPa for OBD2 compatibility (1750/255=6.9).
             sprintf_P(btdata2, PSTR("41 33 %02X\r\n>"), ecudata[2]);
          }
          break;
@@ -571,13 +571,13 @@ void processBluetoothCommand(const char * btdata1, const uint8_t &command_length
          }
          break;
          case 0x0145: // iacv / relative throttle position - Position equated to 0-100% of pedal input i.e. Pedal idle = 0% Pedal full down  = 100% 
-         response = ecuCommand(0x20, 0x05, 0x28, 0x01, ecudata);
+         response = ecuCommand(0x20, 0x05, 0x28, 0x01, ecudata);   // 11-02-16 - Not sure if 0x28 is anything TPS related, might be IACV %
          if (response == DATA)
          {
-            int i = (dlcdata[2] - 24) / 2;  //Kerpz conversion seems to work for my car too nicely, I get 0% or 100% at the endstops.
-			if (i < 0) i = 0; // haxx
-			sprintf_P(btdata2, PSTR("41 45 %02X\r\n>"), i);
-			//sprintf_P(btdata2, PSTR("41 45 %02X\r\n>"), ecudata[2]);
+         //   int i = (ecudata[2] - 24) / 2;  //Kerpz conversion seems to work for my car too nicely, I get 0% or 100% at the endstops.
+			   //   if (i < 0) i = 0; // haxx
+			   //   sprintf_P(btdata2, PSTR("41 45 %02X\r\n>"), i);
+			    sprintf_P(btdata2, PSTR("41 45 %02X\r\n>"), ecudata[2]);
          }
          break;
          // Added for Engine Oil Temp sensor (my external One Wire DS18B20)
@@ -733,7 +733,7 @@ void procecuSerial(void)
    uint16_t rpm=0,vss=0,ect=0,iat=0,maps=0,tps=0;
    //uint16_t baro=0,volt=0,imap=0; // UNUSED
    
-   // row 1
+   // row 1 - Get 16 bytes of ECU data starting at location 0x00
    if (ecuCommand(0x20,0x05,0x00,0x10,data))
    {
       //rpm = 1875000 / (data[2] * 256 + data[3] + 1); // OBD1
@@ -741,7 +741,7 @@ void procecuSerial(void)
       vss = data[4];
    }
    
-   // row 2
+   // row 2 - Get 16 bytes of ECU data starting at location 0x10
    if(ecuCommand(0x20,0x05,0x10,0x10,data))
    {
       float f;
@@ -751,9 +751,10 @@ void procecuSerial(void)
       f = data[3];
       f = 155.04149 - f * 3.0414878 + pow(f, 2) * 0.03952185 - pow(f, 3) * 0.00029383913 + pow(f, 4) * 0.0000010792568 - pow(f, 5) * 0.0000000015618437;
       iat = round(f);
-      maps = data[4]; // data[4] * 0.716-5
+      //maps = data[4]; // data[4] * 0.716-5  //Sneezy - maps on LCD is RAW data no scaling...
+      maps = (data[4]* 69)/100;   //Sneezy Note - Convert what might be a 1.75Bar sensor into kPa for OBD2 compatibility (1750/255=6.9).
       //baro = data[5]; // data[5] * 0.716-5 // UNUSED
-      tps = data[6]; // (data[6] - 24) / 2;
+      tps =  (data[6] - 24) / 2; //data[6]; //Relative TPS not Absolute.
       f = data[9];
       f = (f / 10.45) * 10.0; // cV
       //volt = round(f); // UNUSED
