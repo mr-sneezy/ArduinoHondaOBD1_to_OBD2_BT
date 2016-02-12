@@ -1056,19 +1056,23 @@ void loop()
       }
    }
    // Bluetooth mode
-   else if (millis() - t0 > 300)
+   else
+   //else if (millis() - t0 > 300)
    {
+      btSerial.listen();
+      delay(300);
       if (btSerial.available())
       {
          procbtSerial();
          tLastBluetooth = millis();
       }
-      btSerial.listen();
+      //btSerial.listen();
       
-      t0 = millis();
+      // t0 = millis();
    }
+   
    // If no bluetooth in the last 5 seconds then switch back to LCD mode / Bluetooth search
-   else if (millis() - tLastBluetooth > 5000)
+   if (millis() - tLastBluetooth > 5000)
    {
       elm_mode = false;
       DebugPrintln(F("No bluetooth in 5s"));
