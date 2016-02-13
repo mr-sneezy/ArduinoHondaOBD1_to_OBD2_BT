@@ -481,8 +481,8 @@ void processBluetoothCommand(const char * btdata1, const uint8_t &command_length
          response = ecuCommand(0x20, 0x05, 0x12, 0x01, ecudata);
          if (response == DATA)
          {
-            ecudata[2] = (ecudata[2] * 69)/100;   //Sneezy Note - Convert what might be a 1.75Bar sensor into kPa for OBD2 compatibility (1750/255=6.9).
-            sprintf_P(btdata2, PSTR("41 0B %02X\r\n>"), ecudata[2]);
+            int i = (ecudata[2] * 69)/100;   //Sneezy Note - Convert what might be a 1.75Bar sensor into kPa for OBD2 compatibility (1750/255=6.9).
+            sprintf_P(btdata2, PSTR("41 0B %02X\r\n>"), i);
 
          }
          break;
@@ -730,7 +730,8 @@ void procecuSerial(void)
    //byte h_cmd4[6] = {0x20,0x05,0x76,0x0a,0x5b}; // ecu id
    // Initialise data as all zeros
    byte data[OBD2_BUFFER_LENGTH] = {0};  //Received data from ECU has two byte header, data begins at 3rd byte [2]
-   uint16_t rpm=0,vss=0,ect=0,iat=0,maps=0,tps=0;
+   int rpm=0,vss=0,ect=0,iat=0,maps=0,tps=0;
+   int maps_raw=0,tps_raw=0,ect_raw=0;  //Sneezy - For testing 
    //uint16_t baro=0,volt=0,imap=0; // UNUSED
    
    // row 1 - Get 16 bytes of ECU data starting at location 0x00
@@ -748,15 +749,18 @@ void procecuSerial(void)
       f = data[2];
       f = 155.04149 - f * 3.0414878 + pow(f, 2) * 0.03952185 - pow(f, 3) * 0.00029383913 + pow(f, 4) * 0.0000010792568 - pow(f, 5) * 0.0000000015618437;
       ect = round(f);
+      ect_raw=data[2]; //Sneezy - For testing 
       f = data[3];
       f = 155.04149 - f * 3.0414878 + pow(f, 2) * 0.03952185 - pow(f, 3) * 0.00029383913 + pow(f, 4) * 0.0000010792568 - pow(f, 5) * 0.0000000015618437;
       iat = round(f);
       //maps = data[4]; // data[4] * 0.716-5  //Sneezy - maps on LCD is RAW data no scaling...
+      maps_raw = data[4]; //Sneezy - For testing 
       maps = (data[4]* 69)/100;   //Sneezy Note - Convert what might be a 1.75Bar sensor into kPa for OBD2 compatibility (1750/255=6.9).
       //baro = data[5]; // data[5] * 0.716-5 // UNUSED
-      tps =  (data[6] - 24) / 2; //data[6]; //Relative TPS not Absolute.
+      tps_raw = data[6]; //Sneezy - For testing 
+      tps =  (data[6] - 14) / 2.17; //data[6]; //Relative TPS not Absolute here (My TPS goes from 14 to 231 on the pedal ends).
       f = data[9];
-      f = (f / 10.45) * 10.0; // cV
+      f = (f / 10.45) * 10.0; // cV - Voltage from ECU (not the Arduino Nano A/D).
       //volt = round(f); // UNUSED
       //alt_fr = data[10] / 2.55
       //eld = 77.06 - data[11] / 2.5371
@@ -764,6 +768,7 @@ void procecuSerial(void)
    
    // critical ect value, alarm on
    digitalWrite(13, (ect > 97));
+   //Where does it turn off again ???
    
    // tps offset, fix haxx
    if (tps < 0) tps = 0;
@@ -789,18 +794,30 @@ void procecuSerial(void)
       
       // Line 1
       lcdClearSection(0,0,6,true);
-      lcd.print("R");
-      lcdPaddedPrint(rpm,4);
+      lcd.print("Er");
+      lcdPaddedPrint(ect_raw,3);
       
+//      lcdClearSection(0,0,6,true);
+//      lcd.print("R");
+//      lcdPaddedPrint(rpm,4);
+            
       lcdClearSection(6,0,5);
-      lcd.print("S");
-      lcdPaddedPrint(vss,3);
-      
+      lcd.print("Mr");
+      lcdPaddedPrint(maps_raw,3);
+
+//      lcdClearSection(6,0,5);
+//      lcd.print("S");
+//      lcdPaddedPrint(maps_raw,3);
+     
       lcdClearSection(11,0,5);
-      lcd.print("V");
-      lcdPaddedPrint(volt2/10,2);
-      lcd.print(".");
-      lcd.print(volt2 % 10);
+      lcd.print("Tr");
+      lcdPaddedPrint(tps_raw,3);
+
+//      lcdClearSection(11,0,5);
+//      lcd.print("V");
+//      lcdPaddedPrint(volt2/10,2);
+//      lcd.print(".");
+//      lcd.print(volt2 % 10);
 
       // Line 2
       lcdClearSection(0,1,4,true);
