@@ -3,7 +3,8 @@ ArduinoHondaOBD_Extra (based on the original by kerpz)
 
 An arduino code that reads Honda OBD Protocol and translates it to ELM327 protocol.
 This fork will add three Dallas DS18B20 temperature sensors to the system created by kerpz.
-The sensors output will be available on the LCD as a second screen OR will be spliced into the OBD data sent to the OBD2 conversion routines. 
+The sensors output will be available on the LCD as a second screen OR will be spliced into the OBD data sent to the OBD2 conversion routines.
+
 Update June 2016 - Unless I change my mind, I will not be using the LCD screen option in my code version, Torque or equivilent apps will be the only display front end. They have the advantage of more screen size choice, and datalogging.
 
 Supports
