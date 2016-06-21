@@ -9,8 +9,8 @@ Update June 2016 - Unless I change my mind, I will not be using the LCD screen o
 
 Supports
 --------
-* Honda ECU's before 2002
-* This fork will be tested on a 1999 Honda S2000 used for track days.
+* Honda ECU's before 2002 in countries other than the USA (who had OBDII after 1996).
+* This fork will be tested on an OzDM 1999 Honda S2000 used for track days.
 
 
 Files
