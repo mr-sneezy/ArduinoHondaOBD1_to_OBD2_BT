@@ -40,15 +40,16 @@ Basic wiring for ArduinoHondaOBD_Extra
     D7 ---------------------- Pin4
 
 ![Alt text](https://raw.github.com/kerpz/ArduinoHondaOBD/master/images/UNI_wiring.png "UNI Wiring Image")
+(Taken from Kerpz Git repo)
 
 Wiring for hobd_elm_DS18B20
 --------------------
-    See the schematic PDF in the schematic folder.
-    My schematic follows Kerpz original as much as possible for compatibility.
+    *See the schematic PDF in the schematic folder for my full circuit.
+    My circuit follows Kerpz original as much as possible for compatibility.
     I have 'industrialised' the circuit a little to make it robust in an automotive environment.
     Kerpz's wiring diagram can be used with my code additions by adding the DS18B20's. 
     The extra complexity of my cicuits includes provision for the PCB to be used with an LCD,
-    and access key pins for monitoring with a CRO or Logic analyser. 
+    and access to key pins for monitoring with a CRO or Logic analyser. 
 
 
 TODO
