@@ -15,22 +15,23 @@ Supports
 
 Files
 -----
-* hobd_uni - implements Honda OBD with ELM OBD2 protocol (bluetooth) and LCD display
-* LCD_wiring.png - LCD wiring for arduino uno (10k potentiometer)
+* hobd_elm_with_DS18B20 - My current main version with no LCD and three extra temperature sensors.
+* hobd_uni_S2000_alpha - A joint reworking of Kerpz original code by myself and MiCookie, before I decided to go without the LCD , and * simplify the code to my level :). 
+* 
 
 
-Wiring for hobd_uni (Joined ELM and LCD codes)
+Basic wiring for ArduinoHondaOBD_Extra
 --------------------
-    Honda 3 Pin DLC           Arduino Uno
+    Honda 3 Pin DLC           Arduino Nano
     Gnd --------------------- Gnd
     +12 --------------------- Vin
     K-line ------------------ Pin12
 
-    HC-05 Bluetooth           Arduino Uno               
+    HC-05 Bluetooth           Arduino Nano               
     Rx ---------------------- Pin11
     Tx ---------------------- Pin10
 
-    LCD 16x2                  Arduino Uno               
+    LCD 16x2                  Arduino Nano               
     RS ---------------------- Pin9
     Enable ------------------ Pin8
     D4 ---------------------- Pin7
@@ -40,20 +41,18 @@ Wiring for hobd_uni (Joined ELM and LCD codes)
 
 ![Alt text](https://raw.github.com/kerpz/ArduinoHondaOBD/master/images/UNI_wiring.png "UNI Wiring Image")
 
-Wiring for hobd_elm (Deprecated use hobd_uni)
+Wiring for hobd_elm_DS18B20
 --------------------
-    Honda 3 Pin DLC           Arduino Uno
-    Gnd --------------------- Gnd
-    +12 --------------------- Vin
-    K-line ------------------ Pin12
-
-    HC-05 Bluetooth           Arduino Uno               
-    Rx ---------------------- Pin11
-    Tx ---------------------- Pin10
+    See the schematic PDF in the schematic folder.
+    My schematic follows Kerpz original as much as possible for compatibility.
+    I have 'industrialised' the circuit a little to make it robust in an automotive environment.
+    Kerpz's wiring diagram can be used with my code additions by adding the DS18B20's. 
+    The extra complexity of my cicuits includes provision for the PCB to be used with an LCD,
+    and access key pins for monitoring with a CRO or Logic analyser. 
 
 
 TODO
 -----
-* Upload alpha version
-* Code tidy-up ;)
+* Upload Eagle files
+* Code tidy-up ongoing ;)
 * 
