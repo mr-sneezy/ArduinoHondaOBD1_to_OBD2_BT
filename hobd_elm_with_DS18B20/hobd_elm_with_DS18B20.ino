@@ -15,6 +15,7 @@ Original Author:
    
 */
 #include <SoftwareSerialWithHalfDuplex.h>
+
 //Sneezys note - Additions for 3x Dallas 1-wire temp sensors on a bus(async mode). Load these libraries to your Arduino libraries folder
 #include <OneWire.h>            // https://github.com/PaulStoffregen/OneWire
 #include <DallasTemperature.h> // https://github.com/milesburton/Arduino-Temperature-Control-Library
@@ -51,13 +52,6 @@ bool elm_space = false;
 bool elm_linefeed = false;
 bool elm_header = false;
 int  elm_protocol = 0; // auto
-
-bool DS18B20_fail = false;
- 
-//Set Arduino pin aliases to match attached devices
-const int buttonPin = 18;     // the number of the pushbutton pin (pressed = 0)
-const int failLED =  17;      // the number of the Fault LED pin
-const int buzzerPin =  16;    // the number of the Buzzer pin
 
 void bt_write(char *str) {
   while (*str != '\0')
@@ -425,8 +419,7 @@ void procbtSerial(void) {
 //------------DS18B20 code-----------------  
       Temperature = getTemperature(Sensor1_Thermometer) + 40.5;     
       sprintf_P(btdata2, PSTR("41 5C %02X\r\n>"), (byte)Temperature);  // Send the sensor temp; 
-
-	  //         response = DATA;
+//         response = DATA;
      
 //       else {
 //      sprintf_P(btdata2, PSTR("DATA ERROR\r\n>"));
@@ -513,25 +506,12 @@ void procbtSerial(void) {
   }
 
   if (btdata2) bt_write(btdata2); // send reply
-  
-//Check/set any warnings (DS18B20 fail) or cancel is button is pressed
-	if (DS18B20_fail == true)	{
-		digitalWrite (17,1);  //Set a probe failure on digital pin 17
-		digitalWrite (16,1);  //Set a probe failure on digital pin 16
-		}
-	else {
-		if (digitalRead(buttonPin)==0){	//Button pressed  is a LOW
-			digitalWrite (failLED,0);  //Cancel a probe failure on digital pin 17
-			digitalWrite (buzzerPin,0);  //Cancel a probe failure on digital pin 16	
-		}
-
-		}	
 
 //Request all DS18B20 sensors to start a temperature sample - Takes about 2mS, and program must take longer than that before a read request
   sensors.requestTemperatures(); //Do once each time Torque requests 'ANY' PID value. 
+
 }
 
-//Handle a request for a DS18B20 read
 float getTemperature(DeviceAddress deviceAddress) //Read (get) the last sampled temperature of the probe as addressed by calling routine
 {
    float tempC = sensors.getTempC(deviceAddress);
@@ -543,14 +523,13 @@ float getTemperature(DeviceAddress deviceAddress) //Read (get) the last sampled 
    {
     //ADD a routine here to drop out an Arduino LED (of three ?) indicating a digital temp sensor has died...
     //Could be done via Custom PID and Torque also
-//Indicate a probe failure on Digital pin 17 via the DS18B20 fail flage, LED will flicker each time a faulty probe is read 
-		DS18B20_fail = true;	//Probe failed	
-		tempC = -40;        //Set temp output to show -40C on Torque via OBDII value conversion (-40C is an obvious fault in most of the world !)
+      digitalWrite (17,1);  //Indicate a probe failure on Digital pin 17, LED will flicker each time a faulty probe is read (could be latching ?) 
+      tempC = -40;        //Set temp output to show -40C on Torque (an obvious fault in most of the world !)
    }
-		else
-		{
-		DS18B20_fail = false; //Probe not failed
-		}    
+   else
+   {
+      digitalWrite (17,0);  //Cancel a probe failure on digital pin 17
+   }    
   
    return tempC;
 }
@@ -562,7 +541,7 @@ void Debug_pulse_out()
   delayMicroseconds(100);
   digitalWrite (19,0);
 }
-//SETUP
+
 void setup()
 {
   //Serial.begin(9600);
@@ -574,7 +553,7 @@ void setup()
 
   // Start up the Dallas sensor library
    sensors.begin();
-   // set the resolution to 9 bit (0.5C resolution & fastest measurement speed)
+   // set the resolution to 9 bit (good enough?)
    sensors.setResolution(Sensor1_Thermometer, 9);
    sensors.setResolution(Sensor2_Thermometer, 9);
    sensors.setResolution(Sensor3_Thermometer, 9);
@@ -582,17 +561,16 @@ void setup()
    // Async type request for temps takes only 2mS, programmer then must take following conversion time into account (and do more useful stuff while waiting).
    sensors.setWaitForConversion(false);  // Makes it async and saves delay time.
 
-	pinMode(15,INPUT);		//Bluetooth module status input (BT connected/not-connected)
-	pinMode(buzzerPin,OUTPUT);		//Buzzer output pin 
-	pinMode(failLED,OUTPUT);		//Fail LED output - Currently used for DS18B20 fault indication
-	pinMode(buttonPin,INPUT);		//Button input via pullup (0 = active)		
-	pinMode(19,OUTPUT);		//Direct to the monitor connector for I/O or debug (using a fast pulse etc)
+  pinMode(16,OUTPUT);     //These pins are used for debugging via Saleae 8Ch Logic analyser 
+  pinMode(17,OUTPUT);     //Or driving LEDs
+  pinMode(18,OUTPUT);
+  pinMode(19,OUTPUT);
 
    debugSerial.begin(9600);
-   DebugPrintln(F("HOBD_Debug"));
+   DebugPrintln(F("HOBD"));
    DebugPrintln(F("BT Mode"));
 }
-//LOOP
+
 void loop() {
   btSerial.listen();
   if (btSerial.available()) {     //waits for BT serial data then proccess
