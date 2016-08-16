@@ -31,11 +31,20 @@ DallasTemperature sensors(&oneWire);
 // Assign the addresses of your own 1-Wire temp sensors. Each sensor has a unique 64bit address. When more than one is used this info is needed.
 // See the tutorial on how to obtain these addresses:  http://www.hacktronics.com/Tutorials/arduino-1-wire-address-finder.html
 DeviceAddress Sensor1_Thermometer =
+{ 0x28, 0x98, 0xEB, 0x1E, 0x00, 0x00, 0x80, 0x05 };		//Engine Oil DS18B20
+DeviceAddress Sensor2_Thermometer =
+{ 0x28, 0x07, 0xEC, 0x1E, 0x00, 0x00, 0x80, 0xC1 };		//Gearbox Oil DS18B20
+DeviceAddress Sensor3_Thermometer =
+{ 0x28, 0xFF, 0xFF, 0x73, 0xA3, 0x15, 0x01, 0xFE };		//Differential Oil DS18B20
+
+/*
+DeviceAddress Sensor1_Thermometer =
 { 0x28, 0xFF, 0x0C, 0x1B, 0xA3, 0x15, 0x04, 0xA5 };
 DeviceAddress Sensor2_Thermometer =
 { 0x28, 0xFF, 0x0F, 0x4B, 0xA3, 0x15, 0x04, 0x33 };
 DeviceAddress Sensor3_Thermometer =
 { 0x28, 0xFF, 0x75, 0x70, 0xA3, 0x15, 0x01, 0x00 };
+*/
 
 SoftwareSerialWithHalfDuplex btSerial(10, 11); // RX, TX    //Bluetooth serial connected to these pins
 SoftwareSerialWithHalfDuplex dlcSerial(12, 12, false, false); //Honda OBD1 ECU DLC wire connected to this pin
@@ -420,7 +429,7 @@ void procbtSerial(void) {
 
 //Engine Oil Temp sensor PID (from external One Wire DS18B20)
 //OBD2 sensor conversion EOT = A - 40, so add 40 to balance it, + 0.5 for rounding up   
-  else if (!strcmp(btdata1, "015C")) { // Oil temp
+  else if (!strcmp(btdata1, "015C")) { // Engine Oil temp
 //  Debug_pulse_out();
 //------------DS18B20 code-----------------  
       Temperature = getTemperature(Sensor1_Thermometer) + 40.5;     
@@ -448,7 +457,7 @@ void procbtSerial(void) {
 
 //Custom PID for Differential Oil Temp sensor (external One Wire DS18B20)
 // OBD2 sensor conversion DOT = A - 40, so add 40 to balance it, + 0.5 for rounding up   
-  else if (!strcmp(btdata1, "2002")) { // Oil temp
+  else if (!strcmp(btdata1, "2002")) { // Diff Oil temp
 
 //  Debug_pulse_out();
   
