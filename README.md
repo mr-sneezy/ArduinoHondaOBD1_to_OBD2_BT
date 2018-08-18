@@ -33,10 +33,6 @@ Basic wiring for ArduinoHondaOBD_Extra
     Rx ---------------------- Pin11
     Tx ---------------------- Pin10
 
-
-![Alt text](https://raw.github.com/kerpz/ArduinoHondaOBD/master/images/UNI_wiring.png "UNI Wiring Image")
-(Taken from Kerpz Git repo)
-
 Wiring for hobd_elm_with_DS18B20
 --------------------
     *See the schematic PDF in the schematic folder for my full circuit.
@@ -47,6 +43,10 @@ Wiring for hobd_elm_with_DS18B20
     and access to key pins for monitoring with a CRO or Logic analyser. 
     Debugging serial terminal work in the Arduino IDE from the USB port.
 ![alt text](images/schematic.jpg "My schematic")
+
+Wiring for honda_dlc_to_odbii_bluetooth
+---------------------------------------
+    *See the schematic PDF in the schematic folder for my full circuit.
 
 TODO
 -----
