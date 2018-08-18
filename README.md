@@ -33,8 +33,8 @@ Basic Arduino wiring applicable for both versions
     Rx ---------------------- Pin11
     Tx ---------------------- Pin10
 
-Wiring for hobd_elm_with_DS18B20
----------------------------------
+Wiring image for Expanded VERSION - hobd_elm_with_DS18B20
+---------------------------------------------------------
     *See the schematic PDF in the schematic folder for my full circuit.
     My circuit follows Kerpz original as much as possible for compatibility.
     I have 'industrialised' the circuit a little to make it robust in an automotive environment.
@@ -43,11 +43,12 @@ Wiring for hobd_elm_with_DS18B20
     and access to key pins for monitoring with a CRO or Logic analyser. 
     Debugging serial terminal work in the Arduino IDE from the USB port.
     
-    *Got to 'schematics' folder and the PDF versions for full image.
+ *Got to 'schematics' folder and the PDF versions for full detail.
 ![alt text](images/expanded_schematic.jpg "My extended schematic")
 
-Wiring for honda_dlc_to_odbii_bluetooth
----------------------------------------
+Wiring image for COMPACT VERSION - honda_dlc_to_odbii_bluetooth
+------------------------------------------------------------------
+*See the compact_schematic PDF in the schematic folder for ful detail.
  ![alt text](images/compact_schematic.jpg "My compact schematic")
 
 TODO
