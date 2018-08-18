@@ -51,6 +51,15 @@ Wiring image for COMPACT VERSION - honda_dlc_to_odbii_bluetooth
 *See the compact_schematic PDF in the schematic folder for full detail.
  ![alt text](images/compact_schematic.jpg "My compact schematic")
 
+Notes
+------------------------------------------------------------------
+Hopefully there is enough info available here to make this project.
+What's not apparent is the HC-05 bluetooth module needs to be programmed via TTL inteface
+to match the bt_serial baud rate selected in the INO setup. 
+Default module speeds are sometimes 9600 baud but can be 38400 baud also. One of my 
+BT modules only works properly up to 19200baud, so my INO may be set to that rate.
+Change as required...
+
 TODO
 -----
 * Upload Eagle files
