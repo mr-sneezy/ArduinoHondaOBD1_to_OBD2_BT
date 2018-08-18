@@ -22,8 +22,8 @@ Files
 * 
 
 
-Basic wiring for ArduinoHondaOBD_Extra
---------------------
+Basic Arduino wiring applicable for both versions
+-------------------------------------------------
     Honda 3 Pin DLC           Arduino Nano
     Gnd --------------------- Gnd
     +12 --------------------- Vin
@@ -34,7 +34,7 @@ Basic wiring for ArduinoHondaOBD_Extra
     Tx ---------------------- Pin10
 
 Wiring for hobd_elm_with_DS18B20
---------------------
+---------------------------------
     *See the schematic PDF in the schematic folder for my full circuit.
     My circuit follows Kerpz original as much as possible for compatibility.
     I have 'industrialised' the circuit a little to make it robust in an automotive environment.
@@ -42,11 +42,12 @@ Wiring for hobd_elm_with_DS18B20
     The extra complexity of my cicuits includes provision for the PCB to be used with an LCD,
     and access to key pins for monitoring with a CRO or Logic analyser. 
     Debugging serial terminal work in the Arduino IDE from the USB port.
-![alt text](images/schematic.jpg "My schematic")
+![alt text](images/schematic.jpg "My extended schematic")
 
 Wiring for honda_dlc_to_odbii_bluetooth
 ---------------------------------------
     *See the schematic PDF in the schematic folder for my full circuit.
+    ![alt text](images/compact_schematic.jpg "My compact schematic")
 
 TODO
 -----
