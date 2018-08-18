@@ -33,7 +33,7 @@ Basic Arduino wiring applicable for both versions
     Rx ---------------------- Pin11
     Tx ---------------------- Pin10
 
-Wiring image for Expanded VERSION - hobd_elm_with_DS18B20
+Wiring image for EXPANDED VERSION - hobd_elm_with_DS18B20
 ---------------------------------------------------------
     *See the schematic PDF in the schematic folder for my full circuit.
     My circuit follows Kerpz original as much as possible for compatibility.
@@ -48,7 +48,7 @@ Wiring image for Expanded VERSION - hobd_elm_with_DS18B20
 
 Wiring image for COMPACT VERSION - honda_dlc_to_odbii_bluetooth
 ------------------------------------------------------------------
-*See the compact_schematic PDF in the schematic folder for ful detail.
+*See the compact_schematic PDF in the schematic folder for full detail.
  ![alt text](images/compact_schematic.jpg "My compact schematic")
 
 TODO
