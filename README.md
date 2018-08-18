@@ -1,13 +1,13 @@
 ArduinoHondaOBD_Extra (based on the original project by kerpz)
 ===========
-An arduino project that reads old Honda OBD diagnostic protocol and translates it to ELM327 protocol so any Android OBDII scanner apps can connect with the older Honda OBDI ECU and read the ECU info like it was an OBDII ECU (in countries where Honda did NOT have to use OBDII).
-This project connects the older generation Honda ECU's to an Android or Windows app via bluetooth serial. All the regualr available EFI sensors are translated. Typically you would use this with apps like 'Torque' (which normally use an ELM327 or compatible bluetooth dongle). 
+An arduino project that reads old Honda OBD diagnostic protocol and translates it to ELM327 protocol, so any Android OBDII scanner apps can connect with the older Honda OBDI ECU's, and read sensor data like it was actually an OBDII ECU (for countries where Honda did NOT have to use OBDII protocol).
+The project connects the older generation Honda ECU's to an Android or Windows app via bluetooth serial. All the regualar available EFI sensors are translated. Typically you would use this with apps like 'Torque' (which normally use an ELM327 or compatible bluetooth dongle). 
 
 This fork now has two versions building on kerps original project and his code.
  
 Compact version - A very low component count version that uses only two resistors and two diodes with the Arduino Nano and a HC-05 bluetooth module. A buzzer is optional.
 
-Expanded version - This is the version that has been here a couple of years. It adds extra sensors to the car and engine that are connected to the Arduino Nano. The sensors are three Dallas DS18B20 sensors and one voltage output oil pressure sensor. The dallas temperature sensors are intended to be glued down with a high temperature heatsinking adhesive to the engine sump case, gearbox case and differential case (using adhesive bought from Ebay for mounting high power LED's to heatsinks etc).
+Expanded version - This is my personal development version that has been here a couple of years. It adds extra sensors to the car and engine, that are connected to the Arduino Nano via cables. The sensors are three Dallas DS18B20 1-wire sensors, and a voltage output type oil pressure sensor. The dallas temperature sensors are intended to be glued down with a high temperature heatsinking adhesive to the engine sump case, gearbox case and differential case (using adhesive bought from Ebay for mounting high power LED's to heatsinks etc). If a good place is chosen on these cases where there are minimal fins and below the oil fill line, the temperature is fairly close to what's inside.
 
 Supports
 --------
@@ -33,13 +33,6 @@ Basic wiring for ArduinoHondaOBD_Extra
     Rx ---------------------- Pin11
     Tx ---------------------- Pin10
 
-    LCD 16x2                  Arduino Nano               
-    RS ---------------------- Pin9
-    Enable ------------------ Pin8
-    D4 ---------------------- Pin7
-    D5 ---------------------- Pin6
-    D6 ---------------------- Pin5
-    D7 ---------------------- Pin4
 
 ![Alt text](https://raw.github.com/kerpz/ArduinoHondaOBD/master/images/UNI_wiring.png "UNI Wiring Image")
 (Taken from Kerpz Git repo)
