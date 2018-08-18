@@ -42,11 +42,13 @@ Wiring for hobd_elm_with_DS18B20
     The extra complexity of my cicuits includes provision for the PCB to be used with an LCD,
     and access to key pins for monitoring with a CRO or Logic analyser. 
     Debugging serial terminal work in the Arduino IDE from the USB port.
-![alt text](schematics/schematic.jpg "My extended schematic")
+    
+    *Got to 'schematics' folder and the PDF versions for full image.
+![alt text](images/expanded_schematic.jpg "My extended schematic")
 
 Wiring for honda_dlc_to_odbii_bluetooth
 ---------------------------------------
- ![alt text](schematics/compact_schematic.pdf "My compact schematic")
+ ![alt text](images/compact_schematic.jpg "My compact schematic")
 
 TODO
 -----
