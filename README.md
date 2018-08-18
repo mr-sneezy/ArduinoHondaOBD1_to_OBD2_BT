@@ -1,23 +1,24 @@
-ArduinoHondaOBD_Extra (based on the original by kerpz)
+ArduinoHondaOBD_Extra (based on the original project by kerpz)
 ===========
+An arduino project that reads old Honda OBD diagnostic protocol and translates it to ELM327 protocol so any Android OBDII scanner apps can connect with the older Honda OBDI ECU and read the ECU info like it was an OBDII ECU (in countries where Honda did NOT have to use OBDII).
+This project connects the older generation Honda ECU's to an Android or Windows app via bluetooth serial. All the regualr available EFI sensors are translated. Typically you would use this with apps like 'Torque' (which normally use an ELM327 or compatible bluetooth dongle). 
 
-An arduino project that reads Honda OBD Protocol and translates it to ELM327 protocol so Android OBDII scanner apps can connect with the Honda OBDI ECU (and read most sensors).
-This fork will add three Dallas DS18B20 temperature sensors to the system created by kerpz.
-The sensors output will be available on the LCD as a second screen OR will be spliced into the OBD data sent to the OBD2 conversion routines.
-The three Dallas DS18B20 sensors are intended to be stuck down with a heatsink adhesive (like bought for mounting power LED's to heatsinks etc). My plan is to fit a sensor to the engine sump, the gearbox casing, and the diff casing. One sensor will be temporally taped to the coolant exit hose or thermostat housing to cross check the Honda ECT sensor (I have doubts about it).
+This fork now has two versions building on kerps original project and his code.
+ 
+Compact version - A very low component count version that uses only two resistors and two diodes with the Arduino Nano and a HC-05 bluetooth module. A buzzer is optional.
 
-Update June 2016 - Unless I change my mind, I will not be using the LCD screen option in my code version from now on, Torque or equivalent apps will be the only display front end. They have the advantage of more screen size choice, and datalogging. I'm adding a buzzer and a few indicator LED's for a general alarm in addition to the bluetooth connection. 
+Expanded version - This is the version that has been here a couple of years. It adds extra sensors to the car and engine that are connected to the Arduino Nano. The sensors are three Dallas DS18B20 sensors and one voltage output oil pressure sensor. The dallas temperature sensors are intended to be glued down with a high temperature heatsinking adhesive to the engine sump case, gearbox case and differential case (using adhesive bought from Ebay for mounting high power LED's to heatsinks etc).
 
 Supports
 --------
 * Honda ECU's before 2002 in countries other than the USA (who had OBDII after 1996).
-* This fork will be tested on an OzDM 1999 Honda S2000 used for track days.
+* This fork will be tested on an OzDM 1999 Honda S2000 used for track days. It should work on other 90's Hondas but will depend on what * ECU it's got. Try the compact version if there are doubts...
 
 
 Files
 -----
-* hobd_elm_with_DS18B20 - My current main version with no LCD and three extra temperature sensors.
-* hobd_uni_S2000_alpha - A joint reworking of Kerpz original code by myself and MiCookie, before I decided to go without the LCD , and * simplify the code to my level :). 
+* hobd_elm_with_DS18B20 - My current main version (with no LCD) and three extra temperature sensors, oil pressure sensor, buzzer and RGB * warning LED.
+* honda_dlc_to_obdii_bluetooth - Compact version with minimul component count. 
 * 
 
 
