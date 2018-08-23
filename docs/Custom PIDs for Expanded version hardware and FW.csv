@@ -10,3 +10,4 @@ PGM-F1 Relay,PGMFI,0x200b,{B:0},0,1,.,,,,1
 VTEC E,VTEC E,0x200c,{B:3},0,1,.,,,,1
 VTEC Solenoid,VTS,0x200a,{B:2},0,1,.,,,,1
 What is this ?,What??,0x0145,A,0,255,hex,,,,1
+
