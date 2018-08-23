@@ -1,0 +1,12 @@
+Name," ""ShortName"""," ""ModeAndPID"""," ""Equation"""," ""Min Value"""," ""Max Value"""," ""Units"""," ""Header"""," ""startDiagnostic"""," ""stopDiagnostic"""," ""Scale"""
+Aircon relay,A/C,0x2008,{B:1},0,1,.,,,,1
+Brake,Brake,0x2008,{B:3},0,1,.,,,,1
+Differential Oil Temp,Diff Oil,0x2002,B - 40,0,125,°C,,,,1
+Economy,Eco?,0x200c,{B:7},0,1,.,,,,1
+Gearbox oil temp,Gear Oil,0x2001,B - 40,0,125,°C,,,,1
+O2 Heater,O2 Heat,0x200b,{B:2},0,1,.,,,,1
+Oil pressure,Oil-PSI,0x2003,B,0,150,psi,,,,1
+PGM-F1 Relay,PGMFI,0x200b,{B:0},0,1,.,,,,1
+VTEC E,VTEC E,0x200c,{B:3},0,1,.,,,,1
+VTEC Solenoid,VTS,0x200a,{B:2},0,1,.,,,,1
+What is this ?,What??,0x0145,A,0,255,hex,,,,1
