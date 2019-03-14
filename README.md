@@ -64,22 +64,15 @@ Lastest efforts..
 ------------------------------------------------------------------
 Added a few new Honda OBD sensors as I found ones that worked (for me on my car at least). Still confirming some others as drive time permits.
 
-Now have additionally:
+#### Now have additionally:
+- Intake Air Control Valve %
+- Knock sensor
+- Second O2 sensor voltage (post cat - S2000)
+- Injector Duration in mS
+- Closed Loop indicator (flag bit)
+- A/C Clutch (flag bit)
 
-Intake Air Control Valve %
-
-Knock sensor
-
-Second O2 sensor voltage (post cat - S2000)
-
-Injector Duration in mS
-
-Closed Loop indicator (flag bit)
-
-A/C Clutch (flag bit)
-
-
-###### Previously had:
+#### Previously had working:
 - RPM
 - Speed
 - Timing
@@ -94,12 +87,11 @@ A/C Clutch (flag bit)
 -   EFI Relay
 -   Brake Switch
  
- ###### Extended by my added senors:
+ #### Extended by my added senors:
  - Oil Temp
  - Transmission temp
  - Differential temp
  - (testing oil pressure next)  
-  
 
 TODO
 -----
