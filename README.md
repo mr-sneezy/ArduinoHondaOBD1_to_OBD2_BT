@@ -79,26 +79,26 @@ Closed Loop indicator (flag bit)
 A/C Clutch (flag bit)
 
 
-**Previously had:
-*RPM
-*Speed
-*Timing
-O2 sensor volatge (Pre Cat)
-Coolant temp
-Intake Air temp
-Flag bits:
-  A/C Relay 
-  O2 Heater 
-  VTEC Solenoid 
-  VTEC Enabled
-  EFI Relay
-  Brake Switch
+###### Previously had:
+- RPM
+- Speed
+- Timing
+- O2 sensor volatge (Pre Cat)
+- Coolant temp
+- Intake Air temp
+- Flag bits:
+-   A/C Relay 
+-   O2 Heater 
+-   VTEC Solenoid 
+-   VTEC Enabled
+-   EFI Relay
+-   Brake Switch
  
- **Extended by my added senors:
-  *Oil Temp
-  Transmission temp
-  Differential temp
-  (testing oil pressure next)  
+ ###### Extended by my added senors:
+ - Oil Temp
+ - Transmission temp
+ - Differential temp
+ - (testing oil pressure next)  
   
 
 TODO
