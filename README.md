@@ -95,6 +95,7 @@ Added a few new Honda OBD sensors as I found ones that worked (for me on my car 
 
 TODO
 -----
+* Roll recent changes into the Compact version
 * Upload Eagle files
 * Code tidy-up ongoing ;)
 * 
