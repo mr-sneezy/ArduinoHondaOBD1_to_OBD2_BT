@@ -60,7 +60,7 @@ Default module speeds are sometimes 9600 baud but can be 38400 baud also. One of
 BT modules only works properly up to 19200baud, so my INO may be set to that rate.
 Change as required...
 
-Last efforst
+Lastest efforts..
 ------------------------------------------------------------------
 Added a few new Honda OBD sensors as I found ones that worked (for me on my car at least). Still confirming some others as drive time permits.
 
