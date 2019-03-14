@@ -65,7 +65,6 @@ Lastest efforts..
 Added a few new Honda OBD sensors as I found ones that worked (for me on my car at least). Still confirming some others as drive time permits.
 
 Now have additionally:
-
 Intake Air Control Valve %
 
 Knock sensor
