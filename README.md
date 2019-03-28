@@ -98,4 +98,5 @@ TODO
 * Roll recent changes into the Compact version
 * Upload Eagle files
 * Code tidy-up ongoing ;)
-* 
+* Work on discovering or confirming more flag bits (help would be nice there)
+* Design a small cheap PCB for the Compact version to join Arduino Nano to BlueTooth module...
