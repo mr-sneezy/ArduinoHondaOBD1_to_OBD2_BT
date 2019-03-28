@@ -5,7 +5,6 @@
 
   Hardware:
   - Arduino Nano
-  - 3x Dallas DS18B20 OneWire temp sensors
   - HC-05 Bluetooth module at pin 10 (Rx) pin 11 (Tx)
   - DLC(K-line) at pin 12
 
@@ -426,8 +425,8 @@ void procbtSerial(void) {
   //Custom PID - Relay and switch flags
   else if (!strcmp(btdata1, "2008")) { // custom hobd mapping / flags
     if (dlcCommand(0x20, 0x05, 0x08, 0x01, dlcdata)) { //Flag byte 0x08, Bit0-Start SW?, Bit1-A/C Relay, Bit3-Brake On, Bit7-VTEC Swich (Active Off)
-	    DebugPrint(F("08h flags : "));
-		DebugPrintBinln(dlcdata[2]);
+        DebugPrint(F("08h flags : "));
+        DebugPrintBinln(dlcdata[2]);
       sprintf_P(btdata2, PSTR("60 08 %02X\r\n>"), dlcdata[2]);
     }
     else {
@@ -437,8 +436,8 @@ void procbtSerial(void) {
  //Custom PID - Relay and switch flags
   else if (!strcmp(btdata1, "200A")) { // custom hobd mapping / flags
     if (dlcCommand(0x20, 0x05, 0x0A, 0x01, dlcdata)) { //Flag byte 0x0A, Bit2-VTEC Solenoid active,
-		DebugPrint(F("0Ah flags : "));
-		DebugPrintBinln(dlcdata[2]);
+        DebugPrint(F("0Ah flags : "));
+        DebugPrintBinln(dlcdata[2]);
       sprintf_P(btdata2, PSTR("60 0A %02X\r\n>"), dlcdata[2]);
     }
     else {
@@ -448,8 +447,8 @@ void procbtSerial(void) {
   //Custom PID - Relay and switch flags
   else if (!strcmp(btdata1, "200B")) { // custom hobd mapping / flags
     if (dlcCommand(0x20, 0x05, 0x0B, 0x01, dlcdata)) { //Flag byte 0x0B, Bit0-PGM-FI Relay On, Bit1-A/C Clutch, Bit2-O2 Sensor Heater On, Bit5-MIL On
-		DebugPrint(F("0Bh flags : "));
-		DebugPrintBinln(dlcdata[2]);
+        DebugPrint(F("0Bh flags : "));
+        DebugPrintBinln(dlcdata[2]);
       sprintf_P(btdata2, PSTR("60 0B %02X\r\n>"), dlcdata[2]);
     }
     else {
@@ -459,8 +458,8 @@ void procbtSerial(void) {
   //Custom PID - Relay and switch flags
   else if (!strcmp(btdata1, "200C")) { // custom hobd mapping / flags
     if (dlcCommand(0x20, 0x05, 0x0C, 0x01, dlcdata)) { //Flag byte 0x0C, Bit0-Alt-C (from HOPE - might be Closed Loop Off reason bit?), Bit1-injector off (deceleration)or closed loop related?,  Bit2-IAB Solenoid? (from HOPE), Bit3-VTEC Engaged (ECU), 
-		DebugPrint(F("0Ch flags : "));
-		DebugPrintBinln(dlcdata[2]);
+         DebugPrint(F("0Ch flags : "));
+         DebugPrintBinln(dlcdata[2]);
       sprintf_P(btdata2, PSTR("60 0C %02X\r\n>"), dlcdata[2]);
     }
     else {
@@ -470,8 +469,8 @@ void procbtSerial(void) {
   //Custom PID - Relay and switch flags
   else if (!strcmp(btdata1, "200F")) { // custom hobd mapping / flags
     if (dlcCommand(0x20, 0x05, 0x0F, 0x01, dlcdata)) { //Flag byte 0x0F, Bit0-Fuel system Closed Loop
-		DebugPrint(F("0Fh flags : "));
-		DebugPrintBinln(dlcdata[2]);
+        DebugPrint(F("0Fh flags : "));
+        DebugPrintBinln(dlcdata[2]);
       sprintf_P(btdata2, PSTR("60 0F %02X\r\n>"), dlcdata[2]);
     }
     else {
